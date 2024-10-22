@@ -261,7 +261,7 @@ AbstractInterpreter::MethodKind AbstractInterpreter::method_kind(methodHandle m)
   return zerolocals;
 }
 
-
+// _entry_table数组中元素赋值，何时会调用set_entry_for_kind()函数呢，答案就在TemplateInterpreterGenerator::generate_all()函数中
 void AbstractInterpreter::set_entry_for_kind(AbstractInterpreter::MethodKind kind, address entry) {
   assert(kind >= method_handle_invoke_FIRST &&
          kind <= method_handle_invoke_LAST, "late initialization only for MH entry points");

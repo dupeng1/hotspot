@@ -375,9 +375,11 @@ address AbstractInterpreterGenerator::generate_method_entry(AbstractInterpreter:
   // determine code generation flags
   bool synchronized = false;
   address entry_point = NULL;
-
+  // 根据方法类型kind生成不同的入口
   switch (kind) {
+    // 表示普通方法类型
     case Interpreter::zerolocals             :                                                                             break;
+    // 表示普通的、同步方法类型
     case Interpreter::zerolocals_synchronized: synchronized = true;                                                        break;
     case Interpreter::native                 : entry_point = ((InterpreterGenerator*)this)->generate_native_entry(false);  break;
     case Interpreter::native_synchronized    : entry_point = ((InterpreterGenerator*)this)->generate_native_entry(true);   break;
@@ -402,7 +404,7 @@ address AbstractInterpreterGenerator::generate_method_entry(AbstractInterpreter:
   }
 
   if (entry_point) return entry_point;
-
+  // zerolocals表示正常的Java方法调用，包括Java程序的main()方法，对于zerolocals来说，会调用this->generate_normal_entry()函数生成入口
   return ((InterpreterGenerator*)this)->generate_normal_entry(synchronized);
 }
 

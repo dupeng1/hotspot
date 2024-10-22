@@ -355,6 +355,7 @@ void JavaCalls::call_helper(JavaValue* result, methodHandle* m, JavaCallArgument
   // so we can go compiled via a i2c. Otherwise initial entry method will always
   // run interpreted.
   // 获取目标方法的解释模式入口from_interpreted_entry，下面将其称为entry_point
+  // 这个参数会作为实参传递给StubRoutines::call_stub()函数指针指向的“函数”
   address entry_point = method->from_interpreted_entry();
   if (JvmtiExport::can_post_interpreter_events() && thread->is_interp_only_mode()) {
     entry_point = method->interpreter_entry();

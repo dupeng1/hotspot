@@ -210,7 +210,7 @@ static const BasicType types[Interpreter::number_of_result_handlers] = {
   T_DOUBLE ,
   T_OBJECT
 };
-
+  // generate_all()函数会调用generate_method_entry()函数生成每种Java方法的entry_point，每生成一个对应方法类型的entry_point就保存到_entry_table中。
 void TemplateInterpreterGenerator::generate_all() {
   AbstractInterpreterGenerator::generate_all();
 
@@ -359,7 +359,13 @@ void TemplateInterpreterGenerator::generate_all() {
   }
 
 
+// 其中method_entry是一个宏，扩展后如上的method_entry(zerolocals)语句变为如下的形式：
+// Interpreter::_entry_table[Interpreter::zerolocals] = generate_method_entry(Interpreter::zerolocals);
+// _entry_table变量定义在AbstractInterpreter类中，如下：
+// static address  _entry_table[number_of_method_entries];
 
+// number_of_method_entries表示方法类型的总数，使用方法类型做为数组下标就可以获取对应的方法入口。
+// 调用generate_method_entry()函数为各种类型的方法生成对应的方法入口。
 #define method_entry(kind)                                                                    \
   { CodeletMark cm(_masm, "method entry point (kind = " #kind ")");                    \
     Interpreter::_entry_table[Interpreter::kind] = generate_method_entry(Interpreter::kind);  \

@@ -1238,8 +1238,10 @@ address InterpreterGenerator::generate_native_entry(bool synchronized) {
 
 // Generic method entry to (asm) interpreter
 //------------------------------------------------------------------------------------------------------------------------
-//
+// 会为执行的方法生成堆栈，而堆栈由局部变量表（用来存储传入的参数和被调用方法的局部变量表）、Java方法栈帧数据和操作数栈这三大部分组成
+// 所以entry_point例程会创建这3部分来辅助Java方法的执行
 address InterpreterGenerator::generate_normal_entry(bool synchronized) {
+  // entry_point函数的代码入口地址
   address entry = __ pc();
 
   bool inc_counter  = UseCompiler || CountCompiledCalls;
@@ -1250,10 +1252,11 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
 
   // make sure registers are different!
   assert_different_registers(G2_thread, G5_method, Gargs, Gtmp1, Gtmp2);
-
+  // 当前rbx中存储的是指向Method的指针，通过Method*找到ConstMethod*
   const Address constMethod       (G5_method, Method::const_offset());
   // Seems like G5_method is live at the point this is used. So we could make this look consistent
   // and use in the asserts.
+  // 通过Method*找到AccessFlags
   const Address access_flags      (Lmethod,   Method::access_flags_offset());
 
   const Register Glocals_size = G3;
@@ -1281,7 +1284,7 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
 #endif // ASSERT
 
   // generate the code to allocate the interpreter stack frame
-
+  // 生成固定桢
   generate_fixed_frame(false);
 
 #ifdef FAST_DISPATCH
@@ -1302,7 +1305,9 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   Label clear_loop;
 
   const Register RconstMethod = O1;
+  // 通过ConstMethod*得到parameter的大小
   const Address size_of_parameters(RconstMethod, ConstMethod::size_of_parameters_offset());
+  // 通过ConstMethod*得到local变量的大小
   const Address size_of_locals    (RconstMethod, ConstMethod::size_of_locals_offset());
 
   // NOTE: If you change the frame layout, this code will need to
@@ -1359,6 +1364,8 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   // Must happen AFTER invocation_counter check and stack overflow check,
   // so method is not locked if overflows.
 
+  // 如果是同步方法时，还需要执行lock_method()函数，所以
+  // 会影响到栈帧布局 
   if (synchronized) {
     lock_method();
   } else {
@@ -1382,6 +1389,7 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   __ notify_method_entry();
 
   // start executing instructions
+    // 跳转到目标Java方法的第一条字节码指令，并执行其对应的机器指令
   __ dispatch_next(vtos);
 
 
@@ -1765,6 +1773,7 @@ void TemplateInterpreterGenerator::generate_throw_exception() {
   // O0: exception
 
   // entry point for exceptions thrown within interpreter code
+  // 抛异常入口
   Interpreter::_throw_exception_entry = __ pc();
   __ verify_thread();
   // expression stack is undefined here
@@ -1774,12 +1783,15 @@ void TemplateInterpreterGenerator::generate_throw_exception() {
 
 
   // expression stack must be empty before entering the VM in case of an exception
+  // 清空当前栈的一部分
   __ empty_expression_stack();
   // find exception handler address and preserve exception oop
   // call C routine to find handler and jump to it
+  // 寻找异常处理器入口地址，如果找到则返回异常处理器入口，否则返回弹出当前栈帧的代码入口
   __ call_VM(O1, CAST_FROM_FN_PTR(address, InterpreterRuntime::exception_handler_for_exception), Oexception);
+  // 不管是哪个入口，结果都会放到O1寄存器
   __ push_ptr(O1); // push exception for exception handler bytecodes
-
+  // 跳到入口执行
   __ JMP(O0, 0); // jump to exception handler (may be remove activation entry!)
   __ delayed()->nop();
 

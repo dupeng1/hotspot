@@ -29,7 +29,8 @@
 #ifdef TARGET_ARCH_x86
 # include "interp_masm_x86.hpp"
 #endif
-
+// 定义的通用寄存器
+// 当我们需要使用通用寄存器时，通过rax、rcx等变量引用就可以了
 REGISTER_DEFINITION(Register, noreg);
 REGISTER_DEFINITION(Register, rax);
 REGISTER_DEFINITION(Register, rcx);
@@ -112,7 +113,8 @@ REGISTER_DEFINITION(Register, rscratch2);
 REGISTER_DEFINITION(Register, r12_heapbase);
 REGISTER_DEFINITION(Register, r15_thread);
 #endif // AMD64
-
+// 定义的MMX寄存器
+// 当我们需要使用MMX寄存器，通过mmx0、mmx1等变量引用就可以了
 REGISTER_DEFINITION(MMXRegister, mnoreg );
 REGISTER_DEFINITION(MMXRegister, mmx0 );
 REGISTER_DEFINITION(MMXRegister, mmx1 );

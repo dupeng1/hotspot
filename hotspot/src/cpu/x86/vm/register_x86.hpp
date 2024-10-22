@@ -93,6 +93,7 @@ CONSTANT_REGISTER_DECLARATION(Register, r15,   (15));
 #endif // AMD64
 
 // Use FloatRegister as shortcut
+// 使用FloatRegisterImpl作为简称，浮点寄存器有8个，分别是st0-st7，这是8个80位寄存器
 class FloatRegisterImpl;
 typedef FloatRegisterImpl* FloatRegister;
 
@@ -190,6 +191,8 @@ CONSTANT_REGISTER_DECLARATION(XMMRegister, xmm15,    (15));
 // were deopt might wan't to see them).
 
 // The MMX registers, for P3 and up chips
+// MMX为一种SIMD技术，即可通过一条指令进行多个数据运算，共有8个64位寄存器（借用了80位浮点寄存器的低64位），分别为mmx0-mmx7,
+// 它与其它普通64位寄存器的区别在于通过它的指令进行运算，可以同时计算2个32位数据，或者4个16位数据等等，可以应用位图像处理过程中图形颜色的计算
 CONSTANT_REGISTER_DECLARATION(MMXRegister, mnoreg , (-1));
 CONSTANT_REGISTER_DECLARATION(MMXRegister, mmx0 , ( 0));
 CONSTANT_REGISTER_DECLARATION(MMXRegister, mmx1 , ( 1));

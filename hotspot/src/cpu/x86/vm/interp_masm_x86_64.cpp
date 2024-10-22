@@ -502,12 +502,22 @@ void InterpreterMacroAssembler::dispatch_only_noverify(TosState state) {
   dispatch_base(state, Interpreter::normal_table(state), false);
 }
 
-
+// 读取字节码 -> 前推字节码指针 -> 执行每一条字节码
+// 从generate_fixed_frame()函数生成Java方法调用栈帧的时候，
+// 如果当前是第一次调用，那么r13指向的是字节码的首地址，即第一个字节码，此时的step参数为0
 void InterpreterMacroAssembler::dispatch_next(TosState state, int step) {
   // load next bytecode (load before advancing r13 to prevent AGI)
+  // 加载一条字节码，从r13指向的内存中取一个字节的值，取出来的是字节码指令的操作码
   load_unsigned_byte(rbx, Address(r13, step));
   // advance r13
+
+  // 在当前字节码的位置，指针向前移动step宽度，
+  // 获取地址上的值，这个值是Opcode（范围1~202），存储到rbx
+  // step的值由字节码指令和它的操作数共同决定
+  // 自增r13供下一次字节码分派使用
   increment(r13, step);
+
+  // 返回当前栈顶状态的所有字节码入口点
   dispatch_base(state, Interpreter::dispatch_table(state));
 }
 

@@ -78,9 +78,13 @@ class AbstractInterpreter: AllStatic {
   friend class CppInterpreterGenerator;
  public:
   enum MethodKind {
+    // 普通的方法    
     zerolocals,                                                 // method needs locals initialization
+    // 普通的同步方法 
     zerolocals_synchronized,                                    // method needs locals initialization & is synchronized
+    // native方法
     native,                                                     // native method
+    // native同步方法
     native_synchronized,                                        // native method & is synchronized
     empty,                                                      // empty method (code: _return)
     accessor,                                                   // accessor method (code: _aload_0, _getfield, _(a|i)return)
@@ -145,7 +149,15 @@ class AbstractInterpreter: AllStatic {
 
   // Method activation
   static MethodKind method_kind(methodHandle m);
+
+  // 这里直接返回了_entry_table数组中对应方法类型的entry_point地址。
+  // 这里涉及到Java方法的类型MethodKind，由于要通过entry_point进入Java世界，执行Java方法相关的逻辑
+  
+  // 所以entry_point中一定会为对应的Java方法建立新的栈帧，但是不同方法的栈帧其实是有差别的，如Java普通方法、Java同步方法、有native关键字的Java方法等，
+  // 所以就把所有的方法进行了归类，不同类型获取到不同的entry_point入口
   static address    entry_for_kind(MethodKind k)                { assert(0 <= k && k < number_of_method_entries, "illegal kind"); return _entry_table[k]; }
+  
+  // 首先通过method_kind()函数拿到方法对应的类型，然后调用entry_for_kind()函数根据方法类型获取方法对应的入口entry_point
   static address    entry_for_method(methodHandle m)            { return entry_for_kind(method_kind(m)); }
 
   // used for bootstrapping method handles:

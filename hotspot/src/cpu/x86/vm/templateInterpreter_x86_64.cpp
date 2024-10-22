@@ -1407,23 +1407,34 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   // ebx: Method*
   // r13: sender sp
   address entry_point = __ pc();
-
+  // 当前rbx中存储的是指向Method的指针，通过Method*找到ConstMethod*
   const Address constMethod(rbx, Method::const_offset());
+  // 通过Method*找到AccessFlags
   const Address access_flags(rbx, Method::access_flags_offset());
+  // 通过ConstMethod*得到parameter的大小
   const Address size_of_parameters(rdx,
                                    ConstMethod::size_of_parameters_offset());
+  // 通过ConstMethod*得到local变量的大小
   const Address size_of_locals(rdx, ConstMethod::size_of_locals_offset());
 
 
   // get parameter size (always needed)
+  // 上面已经说明了获取各种方法元数据的计算方式，但并没有执行计算，下面会生成对应的汇编来执行计算，计算ConstMethod*，保存在rdx里面
   __ movptr(rdx, constMethod);
+  // 计算parameter大小，保存在rcx里面 
   __ load_unsigned_short(rcx, size_of_parameters);
 
+  // rbx：保存基址；rcx：保存循环变量；rdx：保存目标地址；rax：保存返回地址（下面用到）
+  // 此时的各个寄存器中的值如下：
   // rbx: Method*
   // rcx: size of parameters
   // r13: sender_sp (could differ from sp+wordSize if we were called via c2i )
 
+  // 计算local变量的大小，保存到rdx
   __ load_unsigned_short(rdx, size_of_locals); // get size of locals in words
+
+  // 由于局部变量表用来存储传入的参数和被调用方法的局部变量，
+  // 所以rdx减去rcx后就是被调用方法的局部变量可使用的大小 
   __ subl(rdx, rcx); // rdx = no. of additional locals
 
   // YYY
@@ -1434,19 +1445,29 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   generate_stack_overflow_check();
 
   // get return address
+  // 返回地址是在CallStub中保存的，如果不弹出堆栈到rax，中间
+  // 会有个return address使的局部变量表不是连续的，
+  // 这会导致其中的局部变量计算方式不一致，所以暂时将返回地址存储到rax中
   __ pop(rax);
 
   // compute beginning of parameters (r14)
+  // 计算第1个参数的地址：当前栈顶地址 + 变量大小 * 8 - 一个字大小
+  // 注意，因为地址保存在低地址上，而堆栈是向低地址扩展的，所以只
+  // 需加n-1个变量大小就可以得到第1个参数的地址
   __ lea(r14, Address(rsp, rcx, Address::times_8, -wordSize));
 
   // rdx - # of additional locals
   // allocate space for locals
   // explicitly initialize locals
+  // 把函数的局部变量设置为0,也就是做初始化，防止之前遗留下的值影响
+  // rdx：被调用方法的局部变量可使用的大小
   {
     Label exit, loop;
     __ testl(rdx, rdx);
+      // 如果rdx<=0，不做任何操作
     __ jcc(Assembler::lessEqual, exit); // do nothing if rdx <= 0
     __ bind(loop);
+      // 初始化局部变量
     __ push((int) NULL_WORD); // initialize local variables
     __ decrementl(rdx); // until everything initialized
     __ jcc(Assembler::greater, loop);
@@ -1454,6 +1475,7 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   }
 
   // initialize fixed part of activation frame
+  // 生成固定桢
   generate_fixed_frame(false);
 
   // make sure method is not native & not abstract
@@ -1511,6 +1533,8 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
   // check for synchronized methods
   // Must happen AFTER invocation_counter check and stack overflow check,
   // so method is not locked if overflows.
+  // 如果是同步方法时，还需要执行lock_method()函数，所以
+  // 会影响到栈帧布局 
   if (synchronized) {
     // Allocate monitor and lock method
     lock_method();
@@ -1544,7 +1568,7 @@ address InterpreterGenerator::generate_normal_entry(bool synchronized) {
 
   // jvmti support
   __ notify_method_entry();
-
+  // 跳转到目标Java方法的第一条字节码指令，并执行其对应的机器指令
   __ dispatch_next(vtos);
 
   // invocation counter overflow

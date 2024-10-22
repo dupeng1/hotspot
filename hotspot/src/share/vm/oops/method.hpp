@@ -164,6 +164,8 @@ class Method : public Metadata {
 
   static address make_adapters(methodHandle mh, TRAPS);
   volatile address from_compiled_entry() const   { return (address)OrderAccess::load_ptr_acquire(&_from_compiled_entry); }
+  // _from_interpreted_entry只是Method类中定义的一个属性，如上方法直接返回了这个属性的值。
+  // 那么这个属性是何时赋值的？其实是在方法连接（也就是在类的生命周期中的类连接阶段会进行方法连接）时会设置
   volatile address from_interpreted_entry() const{ return (address)OrderAccess::load_ptr_acquire(&_from_interpreted_entry); }
 
   // access flag

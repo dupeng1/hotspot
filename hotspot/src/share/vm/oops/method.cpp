@@ -867,9 +867,11 @@ void Method::link_method(methodHandle h_method, TRAPS) {
 
   // Setup interpreter entrypoint
   assert(this == h_method(), "wrong h_method()" );
+  // 首先调用Interpreter::entry_for_method()函数根据特定方法类型获取到方法的入口
   address entry = Interpreter::entry_for_method(h_method);
   assert(entry != NULL, "interpreter entry must be non-null");
   // Sets both _i2i_entry and _from_interpreted_entry
+  // 得到入口entry后会调用set_interpreter_entry()函数将值保存到对应属性上
   set_interpreter_entry(entry);
 
   // Don't overwrite already registered native entries.

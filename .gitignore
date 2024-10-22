@@ -1,0 +1,42 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.exp
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+
+
+*.class
+
+# .settings
+# .classpath
+# .project
+
+hotspot/.project
+hotspot/.cproject
+hotspot/.settings
+
+target
+build
+nbproject
+hotspot.log
+
+*.pdb
+*.ilk

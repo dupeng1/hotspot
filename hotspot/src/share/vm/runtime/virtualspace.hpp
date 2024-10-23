@@ -29,6 +29,7 @@
 
 // ReservedSpace is a data structure for reserving a contiguous address range.
 
+// 这个类很重要，这个类就是用来管理分配的具体空间的，可以看到这里有一个_base，与_size配合，_base就是分配到的内存的开始位置，然后_size就是大小
 class ReservedSpace VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
  private:
@@ -99,6 +100,7 @@ ReservedSpace ReservedSpace::last_part(size_t partition_size)
 }
 
 // Class encapsulating behavior specific of memory space reserved for Java heap
+// 表示的堆空间
 class ReservedHeapSpace : public ReservedSpace {
 public:
   // Constructor
@@ -107,6 +109,7 @@ public:
 };
 
 // Class encapsulating behavior specific memory space for Code
+// 描叙分配的代码空间
 class ReservedCodeSpace : public ReservedSpace {
  public:
   // Constructor
@@ -114,7 +117,7 @@ class ReservedCodeSpace : public ReservedSpace {
 };
 
 // VirtualSpace is data structure for committing a previously reserved address range in smaller chunks.
-
+// 表示堆空间图中的预留空间的，可以看到其由_low表示低位、_high表示高位的地址。
 class VirtualSpace VALUE_OBJ_CLASS_SPEC {
   friend class VMStructs;
  private:

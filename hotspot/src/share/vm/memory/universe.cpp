@@ -243,7 +243,7 @@ void initialize_basic_type_klass(Klass* k, TRAPS) {
   }
   k->append_to_sibling_list();
 }
-
+// 负责初始化JVM的基本运行时环境，包括类加载器、基本类型数组类、系统字典等核心组件
 void Universe::genesis(TRAPS) {
   ResourceMark rm;
 
@@ -282,9 +282,9 @@ void Universe::genesis(TRAPS) {
         _the_empty_klass_array      = MetadataFactory::new_array<Klass*>(null_cld, 0, CHECK);
       }
     }
-
+    // 虚拟机符号表初始化：初始化虚拟机符号表，它包含了JVM内部使用的常量符号引用。
     vmSymbols::initialize(CHECK);
-
+    // 系统字典初始化：它是管理已加载类的全局字典。
     SystemDictionary::initialize(CHECK);
 
     Klass* ok = SystemDictionary::Object_klass();
@@ -303,7 +303,7 @@ void Universe::genesis(TRAPS) {
       _the_array_interfaces_array->at_put(0, SystemDictionary::Cloneable_klass());
       _the_array_interfaces_array->at_put(1, SystemDictionary::Serializable_klass());
     }
-
+    // 基本类型数组类的进一步初始化：对每个基本类型数组类调用initialize_basic_type_klass，完成类的初始化工作，如设置超类等。
     initialize_basic_type_klass(boolArrayKlassObj(), CHECK);
     initialize_basic_type_klass(charArrayKlassObj(), CHECK);
     initialize_basic_type_klass(singleArrayKlassObj(), CHECK);
@@ -326,6 +326,7 @@ void Universe::genesis(TRAPS) {
   // ordinary object arrays, _objectArrayKlass will be loaded when
   // SystemDictionary::initialize(CHECK); is run. See the extra check
   // for Object_klass_loaded in objArrayKlassKlass::allocate_objArray_klass_impl.
+  // 对象数组类的初始化：
   _objectArrayKlassObj = InstanceKlass::
     cast(SystemDictionary::Object_klass())->array_klass(1, CHECK);
   // OLD
@@ -340,6 +341,7 @@ void Universe::genesis(TRAPS) {
   // Only 1.3 or later has the java.lang.Shutdown class.
   // Only 1.4 or later has the java.lang.CharSequence interface.
   // Only 1.5 or later has the java.lang.management.MemoryUsage class.
+  // JDK版本检测：根据是否可以解析特定类（如java.lang.management.MemoryUsage、java.lang.CharSequence、java.lang.Shutdown），确定当前JDK版本的特性标志。
   if (JDK_Version::is_partially_initialized()) {
     uint8_t jdk_version;
     Klass* k = SystemDictionary::resolve_or_null(
@@ -408,6 +410,7 @@ void Universe::genesis(TRAPS) {
   #endif
 
   // Initialize dependency array for null class loader
+  // 类加载器依赖关系初始化：初始化空类加载器的依赖关系数组，以维护类加载顺序和可见性规则。
   ClassLoaderData::the_null_class_loader_data()->init_dependencies(CHECK);
 
 }
@@ -631,27 +634,45 @@ jint universe_init() {
   guarantee(sizeof(oop) >= sizeof(HeapWord), "HeapWord larger than oop?");
   guarantee(sizeof(oop) % sizeof(HeapWord) == 0,
             "oop size is not not a multiple of HeapWord size");
+  //计时启动阶段
+  //记录名为"Genesis"的阶段开始时间，这有助于性能分析和调试，特别是在JVM启动阶段。
   TraceTime timer("Genesis", TraceStartupTime);
+
+  //锁定GC操作
+  //来阻止在引导期间进行垃圾回收（GC）。这是必要的，因为在初始化过程中内存布局不稳定，防止GC可能导致错误或冲突。
   GC_locker::lock();  // do not allow gc during bootstrapping
+
+  //计算硬编码偏移量
+  //计算类结构中硬编码字段的偏移量，这些偏移量对于快速访问类元数据至关重要。
   JavaClasses::compute_hard_coded_offsets();
 
+  //初始化堆
+  //初始化Java堆，如果堆初始化失败（返回值不为JNI_OK），则直接返回错误状态。
   jint status = Universe::initialize_heap();
   if (status != JNI_OK) {
     return status;
   }
 
+  //元数据空间全局初始化
+  //初始化元数据空间（Metaspace），用于存储类、方法等的元数据信息。
   Metaspace::global_initialize();
 
   // Create memory for metadata.  Must be after initializing heap for
   // DumpSharedSpaces.
+  //初始化空类加载器数据
+  //创建代表空（或“引导”）类加载器的数据结构，这是所有类加载器的根。
   ClassLoaderData::init_null_class_loader_data();
 
   // We have a heap so create the Method* caches before
   // Metaspace::initialize_shared_spaces() tries to populate them.
+  //创建方法缓存
   Universe::_finalizer_register_cache = new LatestMethodCache();
   Universe::_loader_addClass_cache    = new LatestMethodCache();
   Universe::_pd_implies_cache         = new LatestMethodCache();
 
+  //处理共享空间
+  //若使用共享空间，则调用MetaspaceShared::initialize_shared_spaces();
+  //初始化共享空间，这包括从共享库加载系统字典、符号表等。
   if (UseSharedSpaces) {
     // Read the data structures supporting the shared spaces (shared
     // system dictionary, symbol table, etc.).  After that, access to
@@ -661,6 +682,8 @@ jint universe_init() {
     MetaspaceShared::initialize_shared_spaces();
     StringTable::create_table();
   } else {
+    //若不使用共享空间，则独立创建SymbolTable（符号表）、StringTable（字符串表）
+    //和通过ClassLoader::create_package_info_table();创建包信息表。
     SymbolTable::create_table();
     StringTable::create_table();
     ClassLoader::create_package_info_table();
@@ -774,16 +797,17 @@ char* Universe::preferred_heap_base(size_t heap_size, size_t alignment, NARROW_O
   return (char*)base; // also return NULL (don't care) for 32-bit VM
 }
 
+// 负责初始化JVM的堆内存管理子系统。根据不同的垃圾收集器（GC）选项，选择并配置相应的堆管理策略
 jint Universe::initialize_heap() {
 
-  if (UseParallelGC) {
+  if (UseParallelGC) {// UseParallelGC
 #if INCLUDE_ALL_GCS
     Universe::_collectedHeap = new ParallelScavengeHeap();
 #else  // INCLUDE_ALL_GCS
     fatal("UseParallelGC not supported in this VM.");
 #endif // INCLUDE_ALL_GCS
 
-  } else if (UseG1GC) {
+  } else if (UseG1GC) {// UseG1GC
 #if INCLUDE_ALL_GCS
     G1CollectorPolicy* g1p = new G1CollectorPolicy();
     g1p->initialize_all();
@@ -793,7 +817,7 @@ jint Universe::initialize_heap() {
     fatal("UseG1GC not supported in java kernel vm.");
 #endif // INCLUDE_ALL_GCS
 
-  } else {
+  } else {// 对于其他情况
     GenCollectorPolicy *gc_policy;
 
     if (UseSerialGC) {
@@ -815,7 +839,7 @@ jint Universe::initialize_heap() {
 
     Universe::_collectedHeap = new GenCollectedHeap(gc_policy);
   }
-
+  // 使用上述选择的堆策略实例，调用Universe::heap()->initialize()初始化堆
   jint status = Universe::heap()->initialize();
   if (status != JNI_OK) {
     return status;
@@ -883,7 +907,7 @@ jint Universe::initialize_heap() {
 
   // We will never reach the CATCH below since Exceptions::_throw will cause
   // the VM to exit if an exception is thrown during initialization
-
+  // 线程本地分配缓冲区（TLAB）初始化：如果启用TLAB（UseTLAB），确保堆管理器支持TLAB分配，并执行TLAB的启动初始化。
   if (UseTLAB) {
     assert(Universe::heap()->supports_tlab_allocation(),
            "Should support thread-local allocation buffers");

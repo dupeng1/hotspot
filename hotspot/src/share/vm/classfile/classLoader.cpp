@@ -800,7 +800,7 @@ void ClassLoader::copy_package_info_table(char** top, char* end) {
 
 PackageInfo* ClassLoader::lookup_package(const char *pkgname) {
   //å½“pkgname="java/lang/Object.class"æ—¶ï¼Œcp="/Object.class"
-  //strrchrå‡½æ•°åœ¨string.hä¸­
+  //strrchrå‡½æ•°åœ¨string.hä¸?
   const char *cp = strrchr(pkgname, '/');
   if (cp != NULL) {
     // Package prefix found
@@ -1031,8 +1031,10 @@ void ClassLoader::initialize() {
   }
 
   // lookup zip library entry points
+  // ??¼ÓÔØjava¿âÒÀÀµ,×îÖÕÒ²ÊÇÊ¹ÓÃdlsym¶¯Ì¬¼ÓÔØÁ´½Ó¿âÎÄ¼ş.
   load_zip_library();
   // initialize search path
+  // ??ÉèÖÃbootstrap¼ÓÔØÆ÷Â·¾¶
   setup_bootstrap_search_path();
   if (LazyBootClassLoader) {
     // set up meta index which makes boot classpath initialization lazier

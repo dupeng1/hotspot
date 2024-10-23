@@ -3513,7 +3513,10 @@ int InjectedField::compute_offset() {
 }
 
 void javaClasses_init() {
+  // 对java计算得到class文件中各个类的偏移量
   JavaClasses::compute_offsets();
+  // 进行了校验
   JavaClasses::check_offsets();
+  // 根据常量池的偏移量把class文件中的常量值放入池中,至此常量池生成
   FilteredFieldsMap::initialize();  // must be done after computing offsets.
 }

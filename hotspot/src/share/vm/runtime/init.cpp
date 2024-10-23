@@ -81,15 +81,22 @@ void perfMemory_exit();
 void ostream_exit();
 
 void vm_init_globals() {
+  // threadshadow初始化,该类是处理线程的exception,是所有线程类的父类.线程的exception是从外部挂上去的,
+  // 这个挂载就是threadshadow类,所以就像是影子一样如影随从.
   check_ThreadShadow();
+  // basic_types初始化,基本类型的初始化,判断类型和大小是否是正确
   basic_types_init();
+  // 事件日志,eventlog的初始化,全部事件有消息,违例,多重定义,类未加载和破环优化的消息.
   eventlog_init();
+  // 互斥锁初始化,使用宏定义来预先定义了所有的互斥锁类型
   mutex_init();
+  // 内存分配器,小块内存初始化
   chunkpool_init();
+  // 性能统计数据内存,永久区内存初始化
   perfMemory_init();
 }
 
-
+// init_globals是最核心的初始化方法,几乎包括了所有的jvm核心系统
 jint init_globals() {
   HandleMark hm;
   management_init();

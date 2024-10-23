@@ -216,6 +216,8 @@ Thread::Thread() {
   set_lgrp_id(-1);
 
   // allocated data structures
+  // 其关联了一个os的thread,也就是系统的thread,在unix系统上就是posix的thread库,该库调用了系统调用来创建线程,
+  // 所以JavaThread是内核线程的描述操作类,本质上是内核线程.
   set_osthread(NULL);
   set_resource_area(new (mtThread)ResourceArea());
   DEBUG_ONLY(_current_resource_mark = NULL;)
@@ -310,6 +312,7 @@ void Thread::initialize_thread_local_storage() {
 }
 
 void Thread::record_stack_base_and_size() {
+  // 主要就是获取栈顶
   set_stack_base(os::current_stack_base());
   set_stack_size(os::current_stack_size());
   // CR 7190089: on Solaris, primordial thread's stack is adjusted
@@ -1497,6 +1500,7 @@ SATBMarkQueueSet JavaThread::_satb_mark_queue_set;
 DirtyCardQueueSet JavaThread::_dirty_card_queue_set;
 #endif // INCLUDE_ALL_GCS
 
+// 首先,其继承自Thread类
 JavaThread::JavaThread(bool is_attaching_via_jni) :
   Thread()
 #if INCLUDE_ALL_GCS
@@ -3302,36 +3306,45 @@ void Threads::threads_do(ThreadClosure* tc) {
 }
 
 jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
-
+    // 检查版本，首先检测一下系统支不支持这个版本的JVM，检查的是平台和JVM的兼容性；
   extern void JDK_Version_init();
 
   // Check version
+  // 检查是否支持当前JNI版本
   if (!is_supported_jni_version(args->version)) return JNI_EVERSION;
 
   // Initialize the output stream module
+  // 初始化输入输出流模块
   ostream_init();
 
   // Process java launcher properties.
+  // 配置Laucher的一些相关参数，加载java的额外参数，主要是针对-Dsun.java.launcher和-Dsun.java.launcher.pid这两个参数,并把参数值储存起来.
   Arguments::process_sun_java_launcher_properties(args);
 
   // Initialize the os module before using TLS
+  // 初始化os模块，包括随机数生成器、当前进程id、高精度计时器、内存页尺寸以及保护页
   os::init();
 
   // Initialize system properties.
+  // 这个是设置jvm的参数和系统参数,在java中调用的System.getProperty方法的所有参数值都在自此方法中设置.
   Arguments::init_system_properties();
 
   // So that JDK version can be used as a discrimintor when parsing arguments
+  // 初始化JDK版本，这个东西将影响后面的系统参数。我举例来说，不同的JDK版本的默认GC是不同的。所以JDK版本要先初始化，后面加载系统参数的时候才好决定默认值是什么；
   JDK_Version_init();
 
   // Update/Initialize System properties after JDK version number is known
+  // 这是之前jdk的版本全部信息设置后,再次设置的系统信息,主要添加了java.vm.specification.vendor,java.vm.specification.version和java.vm.vendor的值.
   Arguments::init_version_specific_system_properties();
 
   // Parse arguments
+    // 参数解析，java命令的参数，例如-XX:+UseParallelGC
   jint parse_result = Arguments::parse(args);
   if (parse_result != JNI_OK) return parse_result;
-
+  // os初始化前的优化，提高jvm和gc性能的一些设置
   os::init_before_ergo();
 
+  // 初始化Ergonomics的东西。Ergonomics和GC息息相关，这个东西大概就是影响GC、堆的默认设置，还有根据设置的最大停顿时间以及吞吐量目标，搞点自适应的东西；
   jint ergo_result = Arguments::apply_ergo(); //ergo是ergonomics的简写
   if (ergo_result != JNI_OK) return ergo_result;
 
@@ -3353,6 +3366,10 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   TraceTime timer("Create VM", TraceStartupTime);
 
   // Initialize the os module after parsing the args
+  // 解析参数后，对os模块（内存、栈、线程）进行初始化
+  // 为什么要分两次来初始化。在这个步骤之前的初始化，是依赖于os模块的，比如说Ergonomics那个部分就会涉及到内存页大小的东西，所以它要先初始化一下；
+  // 但是os模块还和一些系统参数有关，系统参数又依赖于os模块。
+  // 所以JVM的设计者索性分成两次来初始化，先初始化一波独立的无依赖的os模块部分，等前面一大波都初始化之后，再次初始化一下。
   jint os_init_2_result = os::init_2();
   if (os_init_2_result != JNI_OK) return os_init_2_result;
 
@@ -3368,15 +3385,18 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   MemTracker::bootstrap_single_thread();
 
   // Initialize output stream logging
+  // 这个是在ostream_init之后进行的,是初始化输出流的log格式等.
   ostream_init_log();
 
   // Convert -Xrun to -agentlib: if there is no JVM_OnLoad
   // Must be before create_vm_init_agents()
+  // 为了能把 - Xrun参数值转换成agentlib的库文件, 这个初始化方法是判断agentlib文件列表是否为空.
   if (Arguments::init_libraries_at_startup()) {
     convert_vm_init_libraries_to_agents();
   }
 
   // Launch -agentlib/-agentpath and converted -Xrun agents
+  // 同上面的一样,这里是判断agent的列表是否为空,也是为了转换-Xrun的参数.
   if (Arguments::init_agents_at_startup()) {
     create_vm_init_agents();
   }
@@ -3387,21 +3407,27 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   _number_of_non_daemon_threads = 0;
 
   // Initialize global data structures and create system classes in heap
+  // 初始化全局数据结构，并在堆上创建系统类
   vm_init_globals();
 
   // Attach the main thread to this os thread
+  // 设置vm的虚拟线程
   JavaThread* main_thread = new JavaThread();
+  // 设置线程状态,这里为_thread_in_vm,即vm内运行线程
   main_thread->set_thread_state(_thread_in_vm);
   // must do this before set_active_handles and initialize_thread_local_storage
   // Note: on solaris initialize_thread_local_storage() will (indirectly)
   // change the stack size recorded here to one based on the java thread
   // stacksize. This adjusted size is what is used to figure the placement
   // of the guard pages.
+  // 记录该栈的栈顶和大小
   main_thread->record_stack_base_and_size();
+  // 初始化当前线程,此处的当前是针对全局来说的,因为该方法调用了ThreadLocalStorage类,而该类每次只能存一个线程的key和指针.
   main_thread->initialize_thread_local_storage();
-
+  // Handles这里只是用来描述线程正在做的事,这里把线程设置为了阻塞.
   main_thread->set_active_handles(JNIHandleBlock::allocate_block());
 
+  // 设置为方法执行线程,重要的就是创建了OSThread,也就是os的线程,至此java线程就和os线程对应起来了.
   if (!main_thread->set_as_starting_thread()) {
     vm_shutdown_during_initialization(
       "Failed necessary internal allocation. Out of swap space");
@@ -3412,15 +3438,19 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Enable guard page *after* os::create_main_thread(), otherwise it would
   // crash Linux VM, see notes in os_linux.cpp.
+  // 创建守护页,此处守护页仅指glibc部分,根据之前java线程的栈布局,仅在栈底之上加入此部分即可.这里就是用了mprotect方法来在正常的栈之上创建了glibc的守护页.
   main_thread->create_stack_guard_pages();
 
   // Initialize Java-Level synchronization subsystem
+  // 这个是和java synchronized的用法相关,是监视区的初始化,使用的都是宏,不难推测最终调用的是系统的mutex互斥锁.
   ObjectMonitor::Initialize() ;
 
   // Second phase of bootstrapping, VM is about entering multi-thread mode
   MemTracker::bootstrap_multi_thread();
 
   // Initialize global modules
+  // 初始化全局模块。
+  // 方法做的部分事情：字节码初始化、类加载器初始化、JIT编译策略初始化、代码缓存初始化、解释器初始化...可以说，和Java代码执行的大部分事情，基本上都在这里初始化。
   jint status = init_globals();
   if (status != JNI_OK) {
     delete main_thread;
@@ -3429,11 +3459,13 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   }
 
   // Should be done after the heap is fully created
+  // 缓存全局变量
   main_thread->cache_global_variables();
-
+  // 执行器标记体创建
   HandleMark hm;
-
+  // 互斥锁对象创建
   { MutexLocker mu(Threads_lock);
+    // 保存主虚拟线程
     Threads::add(main_thread);
   }
 
@@ -3448,7 +3480,10 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   	// 创建VMThread
   { TraceTime timer("Start VMThread", TraceStartupTime);
   	// 创建VMThread对象，因为当前C++层面，所以也有对象的抽象，好比在Java层面创建Thread对象。
+    // JVM线程大概就分两类，一类是为了维系JVM自身的线程，如GC线程什么的；另一类就是我们在Java代码里面显式创建的线程。这部分就是前一类线程初始化的地方；
+    // VM线程创建
     VMThread::create();
+    // 获取新建线程的指针
     Thread* vmthread = VMThread::vm_thread();
     // 创建底层真正的线程(PThread线程库)
     if (!os::create_thread(vmthread, os::vm_thread))
@@ -3465,11 +3500,12 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
       }
     }
   }
-
+  // 判断是否完成初始化
   assert (Universe::is_fully_initialized(), "not initialized");
   if (VerifyDuringStartup) {
     // Make sure we're starting with a clean slate.
     VM_Verify verify_op;
+    // 执行确认的一些操作
     VMThread::execute(&verify_op);
   }
 
@@ -3485,6 +3521,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Always call even when there are not JVMTI environments yet, since environments
   // may be attached late and JVMTI must track phases of VM execution
+  // 处理JVMTI
   JvmtiExport::enter_start_phase();
 
   // Notify JVMTI agents that VM has started (JNI is up) - nop if no agents.
@@ -3496,7 +3533,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     if (EagerXrunInit && Arguments::init_libraries_at_startup()) {
       create_vm_init_libraries();
     }
-
+    // 初始化Java的一些基础类库
     initialize_class(vmSymbols::java_lang_String(), CHECK_0);
 
     // Initialize java_lang.System (needed before creating the thread)
@@ -3558,7 +3595,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // hotspot vm says "nojit" all the time which is confusing.  So, we reset it here.
   // This should also be taken out as soon as 4211383 gets fixed.
   reset_vm_info_property(CHECK_0);
-
+  // 初始化Java native interface的东西，主要就是处理了一下类型问题
   quicken_jni_functions();
 
   // Must be run after init_ft which initializes ft_enabled
@@ -3578,6 +3615,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // record VM initialization completion time
 #if INCLUDE_MANAGEMENT
+  // 初始化JVM初始化完成时间，标记JVM初始化完成；
   Management::record_vm_init_completed();
 #endif // INCLUDE_MANAGEMENT
 
@@ -3586,6 +3624,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Note that we do not use CHECK_0 here since we are inside an EXCEPTION_MARK and
   // set_init_completed has just been called, causing exceptions not to be shortcut
   // anymore. We call vm_exit_during_initialization directly instead.
+  // 指定类加载器
   SystemDictionary::compute_java_system_loader(THREAD);
   if (HAS_PENDING_EXCEPTION) {
     vm_exit_during_initialization(Handle(THREAD, PENDING_EXCEPTION));
@@ -3612,10 +3651,14 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   JvmtiExport::enter_live_phase();
 
   // Signal Dispatcher needs to be started before VMInit event is posted
+  // 初始化os模块的信号系统，这样JVM才可以向os发送相应信号信息
+  // 初始化signal dispatcher，这样JVM才可以向os发送相应信号信息。这是将操作系统层面的signal和jdk结合起来的关键点；
   os::signal_init();
 
   // Start Attach Listener if +StartAttachListener or it can't be started lazily
+  // 启动Attach Listener线程
   if (!DisableAttachMechanism) {
+    // 启动Attach Listener线程
     AttachListener::vm_start();
     if (StartAttachListener || AttachListener::init_at_startup()) {
       AttachListener::init();
@@ -3642,6 +3685,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // initialize compiler(s)
 #if defined(COMPILER1) || defined(COMPILER2) || defined(SHARK)
+  // 初始化即时编译器，JIT编译器初始化
   CompileBroker::compilation_init();
 #endif
 
@@ -3656,6 +3700,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   }
 
 #if INCLUDE_MANAGEMENT
+  // 初始化Management模块
   Management::initialize(THREAD);
 #endif // INCLUDE_MANAGEMENT
 
@@ -3665,12 +3710,12 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     // stack trace if appropriate. Simply exit VM.
     vm_exit(1);
   }
-
+  // 如果设置了一些诸如内存分析（mem profile）之类的东西，那么就初始化。这个部分可以理解为初始化一些和JVM profile相关的东西；
   if (Arguments::has_profile())       FlatProfiler::engage(main_thread, true);
   if (MemProfiling)                   MemProfiler::engage();
   StatSampler::engage();
   if (CheckJNICalls)                  JniPeriodicChecker::engage();
-
+  // 这个重要性不言而喻，偏向锁可以说是Java锁机制里面最重要的东西；
   BiasedLocking::init();
 
   if (JDK_Version::current().post_vm_init_hook_enabled()) {
@@ -3692,6 +3737,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
       //   aren't, late joiners might appear to start slowly (we might
       //   take a while to process their first tick).
       if (PeriodicTask::num_tasks() > 0) {
+          // 启动WacherThread线程，用以支持定时器等周期性任务
           WatcherThread::start();
       }
   }

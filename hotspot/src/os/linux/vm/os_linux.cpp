@@ -4715,6 +4715,7 @@ const char* os::exception_name(int exception_code, char* buf, size_t size) {
 }
 
 // this is called _before_ the most of global arguments have been parsed
+// 在大部分全局参数解析前调用
 void os::init(void) {
   char dummy;   /* used to get a guess on initial stack address */
 //  first_hrtime = gethrtime();
@@ -4734,19 +4735,20 @@ void os::init(void) {
   init_random(1234567);
 
   ThreadCritical::initialize();
-
+  // 设置内存页大小
   Linux::set_page_size(sysconf(_SC_PAGESIZE));
   if (Linux::page_size() == -1) {
     fatal(err_msg("os_linux.cpp: os::init: sysconf failed (%s)",
                   strerror(errno)));
   }
   init_page_sizes((size_t) Linux::page_size());
-
+  // 初始化系统信息（处理器、物理内存等）
   Linux::initialize_system_info();
 
   // main_thread points to the aboriginal thread
+  // 获取原生主线程的句柄
   Linux::_main_thread = pthread_self();
-
+  // 初始化系统时钟
   Linux::clock_init();
   initial_time_count = javaTimeNanos();
 
@@ -4789,11 +4791,14 @@ extern "C" {
 }
 
 // this is called _after_ the global arguments have been parsed
+// 在全局参数解析后调用
+// 主要针对内存、栈、线程等与os模块密切相关的部分进行初始化。
 jint os::init_2(void)
 {
   Linux::fast_thread_clock_init();
 
   // Allocate a single page and mark it as readable for safepoint polling
+  // 分配共享内存，设置大页内存
   address polling_page = (address) ::mmap(NULL, Linux::page_size(), PROT_READ, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
   guarantee( polling_page != MAP_FAILED, "os::init_2: failed to allocate polling page" );
 
@@ -4816,6 +4821,7 @@ jint os::init_2(void)
   }
 
   // initialize suspend/resume support - must do this before signal_sets_init()
+  // 初始化内核信号，安装信号处理函数SR_handler
   if (SR_initialize() != 0) {
     perror("SR_initialize failed");
     return JNI_ERR;
@@ -4912,6 +4918,7 @@ jint os::init_2(void)
   }
 
   // Initialize lock used to serialize thread creation (see os::create_thread)
+    // 初始化锁
   Linux::set_createThread_lock(new Mutex(Mutex::leaf, "createThread_lock", false));
 
   // at-exit methods are called in the reverse order of their registration.
@@ -4934,6 +4941,7 @@ jint os::init_2(void)
   }
 
   // initialize thread priority policy
+  // 初始化线程优先级策略
   prio_init();
 
   return JNI_OK;

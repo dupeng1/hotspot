@@ -38,7 +38,10 @@
 //  Klass*    // 32 bits if compressed but declared 64 in LP64.
 //  length    // shares klass memory or allocated after declared fields.
 
-
+// arrayOopDesc类的实例表示Java数组对象
+// 具体的基本类型数组或对象类型数组由具体的C++中定义的子类实例表示
+// 组件类型为基本类型的typeArrayOopDesc
+// 组件类型为对象类型的objArrayOopDesc，二维及二维以上的数组都用objArrayOopDesc的实例来表示
 class arrayOopDesc : public oopDesc {
   friend class VMStructs;
 

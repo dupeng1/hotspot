@@ -282,6 +282,7 @@ class ClassLoader: AllStatic {
   }
 
   // Load individual .class file
+  // 加载类：根据类名加载类
   static instanceKlassHandle load_classfile(Symbol* h_name, TRAPS);
 
   // If the specified package has been loaded by the system, then returns

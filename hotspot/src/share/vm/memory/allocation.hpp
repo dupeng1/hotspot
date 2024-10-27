@@ -336,7 +336,9 @@ class Chunk: CHeapObj<mtChunk> {
   friend class VMStructs;
 
  protected:
+ // 单链表的下一个Chunk
   Chunk*       _next;     // Next Chunk in list
+  // 
   const size_t _len;      // Size of this Chunk
  public:
   void* operator new(size_t size, AllocFailType alloc_failmode, size_t length) throw();
@@ -387,8 +389,9 @@ protected:
   friend class HandleMark;
   friend class NoHandleMark;
   friend class VMStructs;
-
+  // 单链表的第一个Chunk
   Chunk *_first;                // First chunk
+  // 当前正在使用的Chunk，通常是单链表的最后一个Chunk
   Chunk *_chunk;                // current chunk
   char *_hwm, *_max;            // High water mark and max in current chunk
   // Get a new Chunk of at least size x
@@ -447,6 +450,7 @@ protected:
     }
   }
   // Further assume size is padded out to words
+  // 在当前Chunk块中分配内存，如果当前块的内存不够，则调用grow()方法分配新的Chunk块，然后在新的Chunk块中分配内存
   void *Amalloc_4(size_t x, AllocFailType alloc_failmode = AllocFailStrategy::EXIT_OOM) {
     assert( (x&(sizeof(char*)-1)) == 0, "misaligned size" );
     debug_only(if (UseMallocOnly) return malloc(x);)
@@ -454,6 +458,7 @@ protected:
       return NULL;
     NOT_PRODUCT(inc_bytes_allocated(x);)
     if (_hwm + x > _max) {
+      // 分配新的Chunk块，在新的Chunk块中分配内存
       return grow(x, alloc_failmode);
     } else {
       char *old = _hwm;

@@ -56,6 +56,7 @@ class CMSIsAliveClosure;
 class PSPromotionManager;
 class ParCompactionManager;
 
+// 类实例表示Java对象
 class oopDesc {
   friend class VMStructs;
  private:
@@ -96,6 +97,7 @@ class oopDesc {
   oop list_ptr_from_klass();
 
   // size of object header, aligned to platform wordSize
+  // 获取header占用的内存空间
   static int header_size()          { return sizeof(oopDesc)/HeapWordSize; }
 
   // Returns whether this is an instance of k or an instance of a subclass of k
@@ -118,6 +120,10 @@ class oopDesc {
 
  private:
   // field addresses in oop
+  // 1、Java对象的header信息可以存储在oopDesc类中定义的 mark和 metadata属性中，而Java对象的fields没有在oopDesc类中定义相应的属性来存储，
+  // 因此只能申请一定的内存空间，然后按一定的布局规则进行存储。
+  // 2、对象字段存放在紧跟着oopDesc实例本身占用的内存空间之后，在获取时只能通过偏移来取值。
+  // 3、该函数用于获取字段地址
   void*     field_base(int offset)        const;
 
   jbyte*    byte_field_addr(int offset)   const;

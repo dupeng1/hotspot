@@ -28,13 +28,19 @@
 #include "utilities/debug.hpp"
 
 // ReferenceType is used to distinguish between java/lang/ref/Reference subclasses
-
+// 通过_reference_type可以将普通类与引用类型区分开，因为引用类型需要垃圾收集器进行特殊处理。
 enum ReferenceType {
+  // 普通类，也就是非引用类型
   REF_NONE,      // Regular class
+  // 表示iava/lang/ref/Reference子类，但是这个子类不是REF_SOFT、REF_WEAK、REE_FINAL和REF_PHANTOM中的任何一种
   REF_OTHER,     // Subclass of java/lang/ref/Reference, but not subclass of one of the classes below
+  // 表示java/lang/ref/SoftReference类及其子类
   REF_SOFT,      // Subclass of java/lang/ref/SoftReference
+  // 表示java/lang/ref/WeakReference类及其子类
   REF_WEAK,      // Subclass of java/lang/ref/WeakReference
+  // 表示java/lang/ref/FinalReference类及其子类
   REF_FINAL,     // Subclass of java/lang/ref/FinalReference
+  // /表示java/lang/ref/PhantomReference类及其子类
   REF_PHANTOM    // Subclass of java/lang/ref/PhantomReference
 };
 

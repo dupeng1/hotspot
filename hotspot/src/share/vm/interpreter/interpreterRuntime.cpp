@@ -503,6 +503,8 @@ IRT_ENTRY(void, InterpreterRuntime::resolve_get_put(JavaThread* thread, Bytecode
 
   {
     JvmtiHideSingleStepping jhss(thread);
+    // 调用get_index_u2_cpcache()函数从当前方法对应的栈帧中获取bcp，然后通过bcp来获取字节码指令的操作数，也就是常量池索引
+    // 得到常量池索引后调用LinkResolver::resolve_field_access()函数可能会连接类和字段，然后将查询到的字段相关信息存储到fieldDescriptor中
     LinkResolver::resolve_field_access(info, pool, get_index_u2_cpcache(thread, bytecode),
                                        bytecode, CHECK);
   } // end JvmtiHideSingleStepping

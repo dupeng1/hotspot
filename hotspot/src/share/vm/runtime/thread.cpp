@@ -982,7 +982,9 @@ bool Thread::set_as_starting_thread() {
 }
 
 static void initialize_class(Symbol* class_name, TRAPS) {
+  //   第一步就是解析该类,因为之前已经对类的定义及偏移量有了记录,所以这里就依据此进行解析.
   Klass* klass = SystemDictionary::resolve_or_fail(class_name, true, CHECK);
+  //   第二步就是初始化,进入该方法
   InstanceKlass::cast(klass)->initialize(CHECK);
 }
 
@@ -3334,7 +3336,8 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   JDK_Version_init();
 
   // Update/Initialize System properties after JDK version number is known
-  // 这是之前jdk的版本全部信息设置后,再次设置的系统信息,主要添加了java.vm.specification.vendor,java.vm.specification.version和java.vm.vendor的值.
+  // 这是之前jdk的版本全部信息设置后,再次设置的系统信息
+  // 主要添加了java.vm.specification.vendor,java.vm.specification.version和java.vm.vendor的值.
   Arguments::init_version_specific_system_properties();
 
   // Parse arguments
@@ -3390,12 +3393,14 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Convert -Xrun to -agentlib: if there is no JVM_OnLoad
   // Must be before create_vm_init_agents()
+  // 依赖的库文件初始化
   // 为了能把 - Xrun参数值转换成agentlib的库文件, 这个初始化方法是判断agentlib文件列表是否为空.
   if (Arguments::init_libraries_at_startup()) {
     convert_vm_init_libraries_to_agents();
   }
 
   // Launch -agentlib/-agentpath and converted -Xrun agents
+  // 涉及的代理初始化
   // 同上面的一样,这里是判断agent的列表是否为空,也是为了转换-Xrun的参数.
   if (Arguments::init_agents_at_startup()) {
     create_vm_init_agents();
@@ -3461,7 +3466,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Should be done after the heap is fully created
   // 缓存全局变量
   main_thread->cache_global_variables();
-  // 执行器标记体创建
+  //   针对java线程的代理设置,可以认为是线程的hook.
   HandleMark hm;
   // 互斥锁对象创建
   { MutexLocker mu(Threads_lock);
@@ -3505,7 +3510,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   if (VerifyDuringStartup) {
     // Make sure we're starting with a clean slate.
     VM_Verify verify_op;
-    // 执行确认的一些操作
+    // 执行确认的一些操作，新启动的vm线程第一件要做的事就是确认准备就绪
     VMThread::execute(&verify_op);
   }
 
@@ -3521,7 +3526,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Always call even when there are not JVMTI environments yet, since environments
   // may be attached late and JVMTI must track phases of VM execution
-  // 处理JVMTI
+  // TI报告已开始vm
   JvmtiExport::enter_start_phase();
 
   // Notify JVMTI agents that VM has started (JNI is up) - nop if no agents.
@@ -3596,6 +3601,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // This should also be taken out as soon as 4211383 gets fixed.
   reset_vm_info_property(CHECK_0);
   // 初始化Java native interface的东西，主要就是处理了一下类型问题
+  // 准备启动jni的函数
   quicken_jni_functions();
 
   // Must be run after init_ft which initializes ft_enabled
@@ -3605,6 +3611,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Set flag that basic initialization has completed. Used by exceptions and various
   // debug stuff, that does not work until all basic classes have been initialized.
+  // 设置主体初始化已经完成
   set_init_completed();
 
 #ifndef USDT2
@@ -3658,7 +3665,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Start Attach Listener if +StartAttachListener or it can't be started lazily
   // 启动Attach Listener线程
   if (!DisableAttachMechanism) {
-    // 启动Attach Listener线程
+    // 钩子线程启动,这是附着在vm上的线程,对外提供类似探针的作用
     AttachListener::vm_start();
     if (StartAttachListener || AttachListener::init_at_startup()) {
       AttachListener::init();
@@ -3680,6 +3687,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   }
 
   if (CleanChunkPoolAsync) {
+    //   小块内存池启动清理工作
     Chunk::start_chunk_pool_cleaner_task();
   }
 

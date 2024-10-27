@@ -29,7 +29,7 @@
 
 // An instanceOop is an instance of a Java Class
 // Evaluating "new HashTable()" will create an instanceOop.
-
+// 该类的实例表示除数组对象外的其他对象
 class instanceOopDesc : public oopDesc {
  public:
   // aligned header size.

@@ -101,12 +101,14 @@ oop SystemDictionary::java_system_loader() {
 void SystemDictionary::compute_java_system_loader(TRAPS) {
   KlassHandle system_klass(THREAD, WK_KLASS(ClassLoader_klass));
   JavaValue result(T_OBJECT);
-  JavaCalls::call_static(&result,
-                         KlassHandle(THREAD, WK_KLASS(ClassLoader_klass)),
-                         vmSymbols::getSystemClassLoader_name(),
-                         vmSymbols::void_classloader_signature(),
+  // 调用java.lang.ClassLoader类的getSystemClassLoader()方法
+  JavaCalls::call_static(&result,// 调用Java静态方法的返回值并将其存储在result中
+                         KlassHandle(THREAD, WK_KLASS(ClassLoader_klass)),// 调用的目标类为java.lang.ClassLoader
+                         vmSymbols::getSystemClassLoader_name(),// 调用目标类中的目标方法为getsystemclassLoader()
+                         vmSymbols::void_classloader_signature(),// 调用目标方法的方法签名
                          CHECK);
-
+  // 获取调用getSystemClassLoader()方法的返回值并将其保存到_java_system_loader属性中
+  // 初始化属性为应用类加载器/AppclassLoader
   _java_system_loader = (oop)result.get_jobject(); //就是sun/misc/Launcher$AppClassLoader
 }
 
@@ -169,6 +171,7 @@ bool SystemDictionary::is_ext_class_loader(Handle class_loader) {
 
 Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader, Handle protection_domain, bool throw_error, TRAPS) {
   Klass* klass = resolve_or_null(class_name, class_loader, protection_domain, THREAD);
+  // 如果之前已经产生了异常或Klass为空，则抛出异常
   if (HAS_PENDING_EXCEPTION || klass == NULL) {
     KlassHandle k_h(THREAD, klass);
     // can return a null klass
@@ -220,11 +223,17 @@ Klass* SystemDictionary::resolve_or_null(Symbol* class_name, Handle class_loader
          err_msg("can not load classes with compiler thread: class=%s, classloader=%s",
                  class_name->as_C_string(),
                  class_loader.is_null() ? "null" : class_loader->klass()->name()->as_C_string()));
+    // 数组，通过签名的格式来判断
   if (FieldType::is_array(class_name)) {
+    // 加载数组
     return resolve_array_class_or_null(class_name, class_loader, protection_domain, CHECK_NULL);
-  } else if (FieldType::is_obj(class_name)) {
+  } 
+    // 普通类，通过签名的格式来判断
+  else if (FieldType::is_obj(class_name)) {
     ResourceMark rm(THREAD);
     // Ignore wrapping L and ;.
+    // 去掉签名中的开头字符L和结束字符;
+    // 加载类
     TempNewSymbol name = SymbolTable::new_symbol(class_name->as_C_string() + 1,
                                    class_name->utf8_length() - 2, CHECK_NULL);
     return resolve_instance_class_or_null(name, class_loader, protection_domain, CHECK_NULL);
@@ -238,17 +247,20 @@ Klass* SystemDictionary::resolve_or_null(Symbol* class_name, TRAPS) {
 }
 
 // Forwards to resolve_instance_class_or_null
-
+// 对元数类型为基本类型和元数类型为对象类型的一维数组的Klass实例进行查找
 Klass* SystemDictionary::resolve_array_class_or_null(Symbol* class_name,
                                                        Handle class_loader,
                                                        Handle protection_domain,
                                                        TRAPS) {
+
   assert(FieldType::is_array(class_name), "must be array");
   Klass* k = NULL;
   FieldArrayInfo fd;
   // dimension and object_key in FieldArrayInfo are assigned as a side-effect
   // of this call
+  // 获取数组元数的类型
   BasicType t = FieldType::get_array_info(class_name, fd, CHECK_NULL);
+  // 数组元数的类型为对象
   if (t == T_OBJECT) {
     // naked oop "k" is OK here -- we assign back into it
     k = SystemDictionary::resolve_instance_class_or_null(fd.object_key(),
@@ -258,7 +270,9 @@ Klass* SystemDictionary::resolve_array_class_or_null(Symbol* class_name,
     if (k != NULL) {
       k = k->array_klass(fd.dimension(), CHECK_NULL);
     }
-  } else {
+  } 
+  // 数组元数的类型为Java基本类型
+  else {
     k = Universe::typeArrayKlassObj(t);
     k = TypeArrayKlass::cast(k)->array_klass(fd.dimension(), CHECK_NULL);
   }
@@ -590,7 +604,7 @@ instanceKlassHandle SystemDictionary::handle_parallel_super_load(
   return (nh);
 }
 
-
+// 查找对象类型
 Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
                                                         Handle class_loader,
                                                         Handle protection_domain,
@@ -611,10 +625,14 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
   // All subsequent calls use find_class, and set has_loaded_class so that
   // before we return a result we call out to java to check for valid protection domain
   // to allow returning the Klass* and add it to the pd_set if it is valid
+  // 通过类名和类加载器计算Hash值
   unsigned int d_hash = dictionary()->compute_hash(name, loader_data);
+  // 计算在Hash表中的索引位置
   int d_index = dictionary()->hash_to_index(d_hash);
+  // 根据hash和index查找对应的Klass实例
   Klass* probe = dictionary()->find(d_index, d_hash, name, loader_data,
                                       protection_domain, THREAD);
+                                      // 如果在字典中找到，就直接返回
   if (probe != NULL) return probe;
 
 
@@ -772,7 +790,7 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
       ResourceMark rm(THREAD);
       THROW_MSG_NULL(vmSymbols::java_lang_ClassCircularityError(), name->as_C_string());
     }
-
+    // 在字典中没有找到时，需要对类进行加载
     if (!class_has_been_loaded) {
 
       // Do actual loading
@@ -967,28 +985,35 @@ Klass* SystemDictionary::find(Symbol* class_name,
 
 // Look for a loaded instance or array klass by name.  Do not do any loading.
 // return NULL in case of error.
+// 查找InstanceKlass或ArrayKlass实例，不进行任何类加载操作
 Klass* SystemDictionary::find_instance_or_array_klass(Symbol* class_name,
                                                       Handle class_loader,
                                                       Handle protection_domain,
                                                       TRAPS) {
   Klass* k = NULL;
   assert(class_name != NULL, "class name must be non NULL");
-
+  // 数组的查找逻辑
   if (FieldType::is_array(class_name)) {
     // The name refers to an array.  Parse the name.
     // dimension and object_key in FieldArrayInfo are assigned as a
     // side-effect of this call
     FieldArrayInfo fd;
+    // 获取数组的元数类型
     BasicType t = FieldType::get_array_info(class_name, fd, CHECK_(NULL));
+    // 元数类型为Java基本类型
     if (t != T_OBJECT) {
       k = Universe::typeArrayKlassObj(t);
-    } else {
+    } 
+    // 元数类型为Java对象
+    else {
       k = SystemDictionary::find(fd.object_key(), class_loader, protection_domain, THREAD);
     }
     if (k != NULL) {
+      // class_name表示的可能时多维数组，因此需要根据维度创建ObjArrayKlass实例
       k = k->array_klass_or_null(fd.dimension());
     }
   } else {
+    // 类的查找逻辑
     k = find(class_name, class_loader, protection_domain, THREAD);
   }
   return k;
@@ -1285,13 +1310,15 @@ void SystemDictionary::clean_up_shared_class(instanceKlassHandle ik, Handle clas
     ik->remove_unshareable_info();
   }
 }
-
+// 双亲委派机制体现，只要涉及类的加载，都会调用这个函数
 instanceKlassHandle SystemDictionary::load_instance_class(Symbol* class_name, Handle class_loader, TRAPS) {
   instanceKlassHandle nh = instanceKlassHandle(); // null Handle
+  // 使用引导类加载器加载类
   if (class_loader.is_null()) {
 
     // Search the shared system dictionary for classes preloaded into the
     // shared spaces.
+    // 在共享系统字典中搜索预加载到共享空间中的类，默认不使用共享空间，因此查找的结果
     instanceKlassHandle k;
     {
       PerfTraceTime vmtimer(ClassLoader::perf_shared_classload_time());
@@ -1301,6 +1328,7 @@ instanceKlassHandle SystemDictionary::load_instance_class(Symbol* class_name, Ha
     if (k.is_null()) {
       // Use VM class loader
       PerfTraceTime vmtimer(ClassLoader::perf_sys_classload_time());
+      // 使用引导类加载器进行类加载
       k = ClassLoader::load_classfile(class_name, CHECK_(nh));
     }
 
@@ -1309,7 +1337,9 @@ instanceKlassHandle SystemDictionary::load_instance_class(Symbol* class_name, Ha
       k = find_or_define_instance_class(class_name, class_loader, k, CHECK_(nh));
     }
     return k;
-  } else {
+  }
+  // 使用指定的类加载器加载，最终会调用iava.lang.ClassLoader类中的loadClass()方法执行类加载
+   else {
     // Use user specified class loader to load class. Call loadClass operation on class_loader.
     ResourceMark rm(THREAD);
 
@@ -1866,9 +1896,9 @@ static const short wk_init_info[] = {
   0
 };
 
-//initialize_wk_klass这个方法只在initialize_wk_klasses_until调用
-//为什么要重复计算info和sid？可能是历史原因吧，initialize_wk_klass是public的，
-//可以不经过initialize_wk_klasses_until直接调用
+// initialize_wk_klass这个方法只在initialize_wk_klasses_until调用
+// 为什么要重复计算info和sid？可能是历史原因吧，initialize_wk_klass是public的，
+// 可以不经过initialize_wk_klasses_until直接调用
 bool SystemDictionary::initialize_wk_klass(WKID id, int init_opt, TRAPS) {
   assert(id >= (int)FIRST_WKID && id < (int)WKID_LIMIT, "oob");
   int  info = wk_init_info[id - FIRST_WKID];

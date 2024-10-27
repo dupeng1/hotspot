@@ -1297,20 +1297,25 @@ static void jni_invoke_static(JNIEnv *env, JavaValue* result, jobject receiver, 
   // the jni parser
   ResourceMark rm(THREAD);
   int number_of_parameters = method->size_of_parameters();
+  // 将要传给Java的参数转换为JavaCallArguments实例传下
   JavaCallArguments java_args(number_of_parameters);
   args->set_java_argument_object(&java_args);
 
   assert(method->is_static(), "method should be static");
 
   // Fill out JavaCallArguments object
+  // 填充JavaCallArguments实例
   args->iterate( Fingerprinter(method).fingerprint() );
   // Initialize result type
+  // 初始化返回类型
   result->set_type(args->get_ret_type());
 
   // Invoke the method. Result is returned as oop.
+  // 供C/C++程序调用Java方法
   JavaCalls::call(result, method, &java_args, CHECK);
 
   // Convert result
+  // 转换结果类型
   if (result->get_type() == T_OBJECT || result->get_type() == T_ARRAY) {
     result->set_jobject(JNIHandles::make_local(env, (oop) result->get_jobject()));
   }
@@ -1581,6 +1586,7 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
   klass()->initialize(CHECK_NULL);
 
   Method* m;
+  // 在查找构造函数时，只查找当前类中的构造函数，不查找超类构造函数
   if (name == vmSymbols::object_initializer_name() ||
       name == vmSymbols::class_initializer_name()) {
     // Never search superclasses for constructors
@@ -1589,7 +1595,10 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
     } else {
       m = NULL;
     }
-  } else {
+  } 
+  // 在查找普通方法时调用了Klass类中的lookup_method或InstanceKlass类中的lookup_method_in_ordered_interfaces
+  // 这两个函数会从父类和接口中查找
+  else {
     m = klass->lookup_method(name, signature);
     if (m == NULL &&  klass->oop_is_instance()) {
       m = InstanceKlass::cast(klass())->lookup_method_in_ordered_interfaces(name, signature);
@@ -1598,6 +1607,7 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
   if (m == NULL || (m->is_static() != is_static)) {
     THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), name_str);
   }
+  // 获取方法对应的methodID，methodID指定后不会变，所以可以重复使用methodID
   return m->jmethod_id();
 }
 
@@ -1621,7 +1631,7 @@ JNI_ENTRY(jmethodID, jni_GetMethodID(JNIEnv *env, jclass clazz,
   return ret;
 JNI_END
 
-
+// 传递的参数name为"checkAndLoadMain"，而sig为'(ZILjava/lang/String;)Ljava/lang/Class;"
 JNI_ENTRY(jmethodID, jni_GetStaticMethodID(JNIEnv *env, jclass clazz,
           const char *name, const char *sig))
   JNIWrapper("GetStaticMethodID");

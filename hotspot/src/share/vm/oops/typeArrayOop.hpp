@@ -174,7 +174,12 @@ class typeArrayOopDesc : public arrayOopDesc {
   // elements each of the given "byte_size".
  private:
   static int object_size(int lh, int length) {
+    // ArrayKlass实例的_layout_helper属性是组合数字，可以通过调用对应的函数从该属性中获取数组头需要占用的字节数及组件类型需要占用的字节数，
+    // 如果组件类型为boolean类型，则值为1。
+
+    // 数组头需要占用的字节数
     int instance_header_size = Klass::layout_helper_header_size(lh);
+    // 组件类型需要占用的字节数
     int element_shift = Klass::layout_helper_log2_element_size(lh);
     DEBUG_ONLY(BasicType etype = Klass::layout_helper_element_type(lh));
     assert(length <= arrayOopDesc::max_array_length(etype), "no overflow");

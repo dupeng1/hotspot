@@ -350,9 +350,9 @@ void ClassLoader::setup_meta_index() {
   // Set up meta index which allows us to open boot jars lazily if
   // class data sharing is enabled
   const char* known_version = "% VERSION 2";
-  //D:\JavaSE1.8\jre\lib\meta-index鏂囦欢
+  //D:\JavaSE1.8\jre\lib\meta-index閺傚洣娆?
   char* meta_index_path = Arguments::get_meta_index_path();
-  //D:\JavaSE1.8\jre\lib\鐩綍
+  //D:\JavaSE1.8\jre\lib\閻╊喖缍?
   char* meta_index_dir  = Arguments::get_meta_index_dir();
   FILE* file = fopen(meta_index_path, "r");
   int line_no = 0;
@@ -799,8 +799,8 @@ void ClassLoader::copy_package_info_table(char** top, char* end) {
 
 
 PackageInfo* ClassLoader::lookup_package(const char *pkgname) {
-  //褰損kgname="java/lang/Object.class"鏃讹紝cp="/Object.class"
-  //strrchr鍑芥暟鍦╯tring.h涓?
+  //瑜版悕kgname="java/lang/Object.class"閺冭绱漜p="/Object.class"
+  //strrchr閸戣姤鏆熼崷鈺痶ring.h娑??
   const char *cp = strrchr(pkgname, '/');
   if (cp != NULL) {
     // Package prefix found
@@ -837,7 +837,7 @@ bool ClassLoader::add_package(const char *pkgname, int classpath_index, TRAPS) {
 
       memcpy(new_pkgname, pkgname, n);
       new_pkgname[n] = '\0';
-	  //褰損kgname="java/lang/Object.class"鏃讹紝new_pkgname="java/lang/"
+	  //瑜版悕kgname="java/lang/Object.class"閺冭绱漬ew_pkgname="java/lang/"
       pp = _package_hash_table->new_entry(new_pkgname, n);
       pp->set_index(classpath_index);
 
@@ -894,7 +894,7 @@ instanceKlassHandle ClassLoader::load_classfile(Symbol* h_name, TRAPS) {
   ResourceMark rm(THREAD);
   EventMark m("loading class %s", h_name->as_C_string());
   ThreadProfilerMark tpm(ThreadProfilerMark::classLoaderRegion);
-
+  // 获取文件名称
   stringStream st;
   // st.print() uses too much stack space while handling a StackOverflowError
   // st.print("%s.class", h_name->as_utf8());
@@ -903,15 +903,18 @@ instanceKlassHandle ClassLoader::load_classfile(Symbol* h_name, TRAPS) {
   char* name = st.as_string();
 
   // Lookup stream for parsing .class file
+  // 根据文件名称查找Class文件
   ClassFileStream* stream = NULL;
   int classpath_index = 0;
   {
     PerfClassTraceTime vmtimer(perf_sys_class_lookup_time(),
                                ((JavaThread*) THREAD)->get_thread_stat()->perf_timers_addr(),
                                PerfClassTraceTime::CLASS_LOAD);
+    // 从第一个ClassPathEntry开始遍历所有的ClassPathEntry
     ClassPathEntry* e = _first_entry;
     while (e != NULL) {
       stream = e->open_stream(name, CHECK_NULL);
+      // 如果找到目标文件，则跳出循环
       if (stream != NULL) {
         break;
       }
@@ -921,13 +924,19 @@ instanceKlassHandle ClassLoader::load_classfile(Symbol* h_name, TRAPS) {
   }
 
   instanceKlassHandle h;
+  // 如果找到了目标Class文件，则加载并解析
   if (stream != NULL) {
 
     // class file found, parse it
+    // 创建ClassrileParser实例，解析过程中得到的Class元信息将暂时保存到此实例的相关属性中
     ClassFileParser parser(stream);
+    // 每个类加载器都对应一个ClassLoaderData实例，获取引导类加载器对应的ClassLoaderData实例
     ClassLoaderData* loader_data = ClassLoaderData::the_null_class_loader_data();
     Handle protection_domain;
     TempNewSymbol parsed_name = NULL;
+    // 加载并解析Class文件，注意此时并未开始连接
+    // 1、解析Class文件中的类、字段和常量池等信息
+    // 2、将其转换为C++内部的对等表示形式，如将类元信息存储在InstanceKlass实例中，将常量池信息存储在ConstantPool实例中
     instanceKlassHandle result = parser.parseClassFile(h_name,
                                                        loader_data,
                                                        protection_domain,
@@ -936,6 +945,7 @@ instanceKlassHandle ClassLoader::load_classfile(Symbol* h_name, TRAPS) {
                                                        CHECK_(h));
 
     // add to package table
+    // 调用add_package()函数，保存已经解析完成的类，避免重复加载解析
     if (add_package(name, classpath_index, THREAD)) {
       h = result;
     }
@@ -1031,10 +1041,10 @@ void ClassLoader::initialize() {
   }
 
   // lookup zip library entry points
-  // ??加载java库依赖,最终也是使用dlsym动态加载链接库文件.
+  // ??鍔犺浇java搴撲緷璧?,鏈�缁堜篃鏄娇鐢╠lsym鍔ㄦ�佸姞杞介摼鎺ュ簱鏂囦欢.
   load_zip_library();
   // initialize search path
-  // ??设置bootstrap加载器路径
+  // ??璁剧疆bootstrap鍔犺浇鍣ㄨ矾寰?
   setup_bootstrap_search_path();
   if (LazyBootClassLoader) {
     // set up meta index which makes boot classpath initialization lazier

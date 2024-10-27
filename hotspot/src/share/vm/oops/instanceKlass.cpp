@@ -179,31 +179,39 @@ InstanceKlass* InstanceKlass::allocate_instance_klass(
                                               Klass* super_klass,
                                               bool is_anonymous,
                                               TRAPS) {
-
+  // 获取创建InstanceKlass实例时需要分配的内存空间                                
   int size = InstanceKlass::size(vtable_len, itable_len, nonstatic_oop_map_size,
                                  access_flags.is_interface(), is_anonymous);
 
   // Allocation
   InstanceKlass* ik;
+  // 根据需要创建的类型rt创建不同的C++类实例
   if (rt == REF_NONE) {
+    // 通过InstanceMirrorKlass实例表示java.lang.Class类
     if (name == vmSymbols::java_lang_Class()) {
       ik = new (loader_data, size, THREAD) InstanceMirrorKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
         access_flags, is_anonymous);
-    } else if (name == vmSymbols::java_lang_ClassLoader() ||
+    } 
+    // 通过InstanceClassLoaderKlass实例表示java.lang.ClassLoader
+    else if (name == vmSymbols::java_lang_ClassLoader() ||
           (SystemDictionary::ClassLoader_klass_loaded() &&
           super_klass != NULL &&
           super_klass->is_subtype_of(SystemDictionary::ClassLoader_klass()))) {
       ik = new (loader_data, size, THREAD) InstanceClassLoaderKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
         access_flags, is_anonymous);
-    } else {
+    } 
+    // 通过InstanceKlass实例表示普通类
+    else {
       // normal class
       ik = new (loader_data, size, THREAD) InstanceKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
         access_flags, is_anonymous);
     }
-  } else {
+  }
+  // 通过InstanceRefKlass实例表示引用类型
+   else {
     // reference klass
     ik = new (loader_data, size, THREAD) InstanceRefKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
@@ -554,6 +562,7 @@ void InstanceKlass::initialize(TRAPS) {
   if (this->should_be_initialized()) {
     HandleMark hm(THREAD);
     instanceKlassHandle this_oop(THREAD, this);
+    // 这里就是在加载了类后,对其进行的初始化,包括链接,准备,校验等,在方法中已经清晰的标注出来
     initialize_impl(this_oop, CHECK);
     // Note: at this point the class may be initialized
     //       OR it may be in the state of being initialized
@@ -1092,15 +1101,16 @@ instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
   JavaCalls::call(&result, mh, &args, CHECK_NULL);
   return h_i();
 }
-
+// 创建instanceOop实例
 instanceOop InstanceKlass::allocate_instance(TRAPS) {
   bool has_finalizer_flag = has_finalizer(); // Query before possible GC
+  // 获取创建instanceOop实例所需要的内存空间，size_helper()函数用于从_layout_helper属性中获取Java对象所需要的内存空间大小
   int size = size_helper();  // Query before forming handle.
 
   KlassHandle h_k(THREAD, this);
 
   instanceOop i;
-
+  // 分配size的内存
   i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
@@ -1134,17 +1144,21 @@ Klass* InstanceKlass::array_klass_impl(instanceKlassHandle this_oop, bool or_nul
     JavaThread *jt = (JavaThread *)THREAD;
     {
       // Atomic creation of array_klasses
+      // 通过锁保证创建一维数组类型的原子性
       MutexLocker mc(Compile_lock, THREAD);   // for vtables
       MutexLocker ma(MultiArray_lock, THREAD);
 
       // Check if update has already taken place
       if (this_oop->array_klasses() == NULL) {
+        // 创建以当前InstanceKlass实例为基本类型的一维类型数组，创建成功后保存到_array_klasses属性中，避免下次再重新创建
         Klass*    k = ObjArrayKlass::allocate_objArray_klass(this_oop->class_loader_data(), 1, this_oop, CHECK_NULL);
         this_oop->set_array_klasses(k);
       }
     }
   }
   // _this will always be set at this point
+  // 创建了以InstanceKlass实例为基本类型的一维数组，继续调用下面的array_klass_or_null()或array_klass函数创建符合要求的n维数组
+  // 如果dim+1维的0biArrayKlass仍然不等于n，则会间接递归调用本函数继续创建dim+2和dim+3等，直到等于n
   ObjArrayKlass* oak = (ObjArrayKlass*)this_oop->array_klasses();
   if (or_null) {
     return oak->array_klass_or_null(n);
@@ -1423,6 +1437,7 @@ static int binary_search(Array<Method*>* methods, Symbol* name) {
 }
 
 // find_method looks up the name/signature in the local methods array
+// 从当前的InstanceKlass中的 methods数组中查找，这个数组中只存储了当前类中定义的方法
 Method* InstanceKlass::find_method(Symbol* name, Symbol* signature) const {
   return InstanceKlass::find_method(methods(), name, signature);
 }
@@ -1504,10 +1519,13 @@ Method* InstanceKlass::uncached_lookup_method(Symbol* name, Symbol* signature) c
   Klass* klass = const_cast<InstanceKlass*>(this);
   bool dont_ignore_overpasses = true;  // For the class being searched, find its overpasses.
   while (klass != NULL) {
+    // 调用find_method()函数从当前InstanceKlass的methods数组中查找名称和签名相同的方法
+
     Method* method = InstanceKlass::cast(klass)->find_method(name, signature);
     if ((method != NULL) && (dont_ignore_overpasses || !method->is_overpass())) {
       return method;
     }
+    // 从继承链往上查找
     klass = InstanceKlass::cast(klass)->super();
     dont_ignore_overpasses = false;  // Ignore overpass methods in all superclasses.
   }

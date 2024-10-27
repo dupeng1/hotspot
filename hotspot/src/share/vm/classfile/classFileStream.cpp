@@ -38,6 +38,7 @@ ClassFileStream::ClassFileStream(u1* buffer, int length, char* source) {
   _need_verify  = false;
 }
 
+// 以1、2、4和8个字节为单位的操作方法，如读取和跳过。
 u1 ClassFileStream::get_u1(TRAPS) {
   if (_need_verify) {
     guarantee_more(1, CHECK_0);

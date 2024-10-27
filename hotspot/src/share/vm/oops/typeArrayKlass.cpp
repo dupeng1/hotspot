@@ -54,13 +54,14 @@ bool TypeArrayKlass::compute_is_subtype_of(Klass* k) {
 
 TypeArrayKlass* TypeArrayKlass::create_klass(BasicType type,
                                       const char* name_str, TRAPS) {
+  // 在HotSpot中，所有的字符串都通过Symbol实例来表示，以达到重用的目的
   Symbol* sym = NULL;
   if (name_str != NULL) {
     sym = SymbolTable::new_permanent_symbol(name_str, CHECK_NULL);
   }
-
+  // 使用系统类加载器加载数组类型
   ClassLoaderData* null_loader_data = ClassLoaderData::the_null_class_loader_data();
-
+  // 创建TypeArrayKlass并完成部分属性的初始化
   TypeArrayKlass* ak = TypeArrayKlass::allocate(null_loader_data, type, sym, CHECK_NULL);
 
   // Add all classes to our internal class loader list here,
@@ -69,6 +70,7 @@ TypeArrayKlass* TypeArrayKlass::create_klass(BasicType type,
   null_loader_data->add_class(ak);
 
   // Call complete_create_array_klass after all instance variables have been initialized.
+  // 初始化TypeArrayKlass中的属性
   complete_create_array_klass(ak, ak->super(), CHECK_NULL);
 
   return ak;
@@ -77,9 +79,12 @@ TypeArrayKlass* TypeArrayKlass::create_klass(BasicType type,
 TypeArrayKlass* TypeArrayKlass::allocate(ClassLoaderData* loader_data, BasicType type, Symbol* name, TRAPS) {
   assert(TypeArrayKlass::header_size() <= InstanceKlass::header_size(),
       "array klasses must be same size as InstanceKlass");
-
+  // 获取TypeArrayKlass实例需要占用内存
+  // header_size属性的值应该是TypeArrayKlass类自身占用的内存空间
+  // 但是现在获取的是InstanceKlass类自身占用的内存空间
+  // 这是因为InstanceKlass占用的内存比TypeArrayKlass大，有足够内存来存放相关数据
   int size = ArrayKlass::static_size(TypeArrayKlass::header_size());
-
+  // 然后通过重载new运算符为对象分配内存，最后调用TypeArrayKlass的构造函数初始化相关属性
   return new (loader_data, size, THREAD) TypeArrayKlass(type, name);
 }
 
@@ -87,21 +92,26 @@ TypeArrayKlass::TypeArrayKlass(BasicType type, Symbol* name) : ArrayKlass(name) 
   set_layout_helper(array_layout_helper(type));
   assert(oop_is_array(), "sanity");
   assert(oop_is_typeArray(), "sanity");
-
+  // 设置数组的最大长度
   set_max_length(arrayOopDesc::max_array_length(type));
   assert(size() >= TypeArrayKlass::header_size(), "bad size");
 
   set_class_loader_data(ClassLoaderData::the_null_class_loader_data());
 }
 
+// length表示数组的大小
+// do_zero表示是否需要在分配数组内存时将内存初始化为零值
 typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
   assert(log2_element_size() >= 0, "bad scale");
   if (length >= 0) {
     if (length <= max_length()) {
+      // 从_layout_helper中获取数组的大小
       size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
       KlassHandle h_k(THREAD, this);
       typeArrayOop t;
       CollectedHeap* ch = Universe::heap();
+      // 在堆上分配内存空间
+      // 初始化对象头信息。即为length、_mark和_metadata属性赋值。
       if (do_zero) {
         t = (typeArrayOop)CollectedHeap::array_allocate(h_k, (int)size, length, CHECK_NULL);
       } else {

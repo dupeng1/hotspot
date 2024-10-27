@@ -522,11 +522,14 @@ Symbol* ConstantPool::klass_name_at(int which) {
   // It is not safe to rely on the tag bit's here, since we don't have a lock, and the entry and
   // tag is not updated atomicly.
   CPSlot entry = slot_at(which);
+  // 已经连接时，获取指向InstanceKlass实例的指针
   if (entry.is_resolved()) {
     // Already resolved - return entry's name.
     assert(entry.get_klass()->is_klass(), "must be");
     return entry.get_klass()->name();
-  } else {
+  } 
+  // 未连接时，获取指向Symbol实例的指针
+  else {
     assert(entry.is_unresolved(), "must be either symbol or klass");
     return entry.get_symbol();
   }

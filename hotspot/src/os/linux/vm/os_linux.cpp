@@ -4715,7 +4715,7 @@ const char* os::exception_name(int exception_code, char* buf, size_t size) {
 }
 
 // this is called _before_ the most of global arguments have been parsed
-// ÔÚ´ó²¿·ÖÈ«¾Ö²ÎÊı½âÎöÇ°µ÷ÓÃ
+// åœ¨å¤§éƒ¨åˆ†å…¨å±€å‚æ•°è§£æå‰è°ƒç”¨
 void os::init(void) {
   char dummy;   /* used to get a guess on initial stack address */
 //  first_hrtime = gethrtime();
@@ -4735,20 +4735,21 @@ void os::init(void) {
   init_random(1234567);
 
   ThreadCritical::initialize();
-  // ÉèÖÃÄÚ´æÒ³´óĞ¡
+  // è®¾ç½®å†…å­˜é¡µå¤§å°
   Linux::set_page_size(sysconf(_SC_PAGESIZE));
   if (Linux::page_size() == -1) {
     fatal(err_msg("os_linux.cpp: os::init: sysconf failed (%s)",
                   strerror(errno)));
   }
+  // è®°å½•è¯¥é¡µå¤§å°
   init_page_sizes((size_t) Linux::page_size());
-  // ³õÊ¼»¯ÏµÍ³ĞÅÏ¢£¨´¦ÀíÆ÷¡¢ÎïÀíÄÚ´æµÈ£©
+  // åˆå§‹åŒ–ç³»ç»Ÿä¿¡æ¯ï¼ˆå¤„ç†å™¨ã€ç‰©ç†å†…å­˜ç­‰ï¼‰
   Linux::initialize_system_info();
 
   // main_thread points to the aboriginal thread
-  // »ñÈ¡Ô­ÉúÖ÷Ïß³ÌµÄ¾ä±ú
+  // è·å–åŸç”Ÿä¸»çº¿ç¨‹çš„å¥æŸ„ï¼Œè®°å½•å½“å‰çº¿ç¨‹idï¼Œä¹Ÿå°±æ˜¯0å·çº¿ç¨‹
   Linux::_main_thread = pthread_self();
-  // ³õÊ¼»¯ÏµÍ³Ê±ÖÓ
+  // åˆå§‹åŒ–ç³»ç»Ÿæ—¶é’Ÿ
   Linux::clock_init();
   initial_time_count = javaTimeNanos();
 
@@ -4791,14 +4792,14 @@ extern "C" {
 }
 
 // this is called _after_ the global arguments have been parsed
-// ÔÚÈ«¾Ö²ÎÊı½âÎöºóµ÷ÓÃ
-// Ö÷ÒªÕë¶ÔÄÚ´æ¡¢Õ»¡¢Ïß³ÌµÈÓëosÄ£¿éÃÜÇĞÏà¹ØµÄ²¿·Ö½øĞĞ³õÊ¼»¯¡£
+// åœ¨å…¨å±€å‚æ•°è§£æåè°ƒç”¨
+// ä¸»è¦é’ˆå¯¹å†…å­˜ã€æ ˆã€çº¿ç¨‹ç­‰ä¸osæ¨¡å—å¯†åˆ‡ç›¸å…³çš„éƒ¨åˆ†è¿›è¡Œåˆå§‹åŒ–ã€‚
 jint os::init_2(void)
 {
   Linux::fast_thread_clock_init();
 
   // Allocate a single page and mark it as readable for safepoint polling
-  // ·ÖÅä¹²ÏíÄÚ´æ£¬ÉèÖÃ´óÒ³ÄÚ´æ
+  // åˆ†é…å…±äº«å†…å­˜ï¼Œè®¾ç½®å¤§é¡µå†…å­˜
   address polling_page = (address) ::mmap(NULL, Linux::page_size(), PROT_READ, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
   guarantee( polling_page != MAP_FAILED, "os::init_2: failed to allocate polling page" );
 
@@ -4821,7 +4822,7 @@ jint os::init_2(void)
   }
 
   // initialize suspend/resume support - must do this before signal_sets_init()
-  // ³õÊ¼»¯ÄÚºËĞÅºÅ£¬°²×°ĞÅºÅ´¦Àíº¯ÊıSR_handler
+  // åˆå§‹åŒ–å†…æ ¸ä¿¡å·ï¼Œå®‰è£…ä¿¡å·å¤„ç†å‡½æ•°SR_handler
   if (SR_initialize() != 0) {
     perror("SR_initialize failed");
     return JNI_ERR;
@@ -4918,7 +4919,7 @@ jint os::init_2(void)
   }
 
   // Initialize lock used to serialize thread creation (see os::create_thread)
-    // ³õÊ¼»¯Ëø
+    // åˆå§‹åŒ–é”
   Linux::set_createThread_lock(new Mutex(Mutex::leaf, "createThread_lock", false));
 
   // at-exit methods are called in the reverse order of their registration.
@@ -4941,7 +4942,7 @@ jint os::init_2(void)
   }
 
   // initialize thread priority policy
-  // ³õÊ¼»¯Ïß³ÌÓÅÏÈ¼¶²ßÂÔ
+  // åˆå§‹åŒ–çº¿ç¨‹ä¼˜å…ˆçº§ç­–ç•¥
   prio_init();
 
   return JNI_OK;

@@ -34,6 +34,7 @@
 class TypeArrayKlass : public ArrayKlass {
   friend class VMStructs;
  private:
+ // 保存数组允许的最大长度
   jint _max_length;            // maximum number of elements allowed in an array
 
   // Constructor

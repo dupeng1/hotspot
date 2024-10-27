@@ -152,7 +152,6 @@ class AbstractInterpreter: AllStatic {
 
   // 这里直接返回了_entry_table数组中对应方法类型的entry_point地址。
   // 这里涉及到Java方法的类型MethodKind，由于要通过entry_point进入Java世界，执行Java方法相关的逻辑
-  
   // 所以entry_point中一定会为对应的Java方法建立新的栈帧，但是不同方法的栈帧其实是有差别的，如Java普通方法、Java同步方法、有native关键字的Java方法等，
   // 所以就把所有的方法进行了归类，不同类型获取到不同的entry_point入口
   static address    entry_for_kind(MethodKind k)                { assert(0 <= k && k < number_of_method_entries, "illegal kind"); return _entry_table[k]; }

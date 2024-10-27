@@ -40,6 +40,9 @@ int ArrayKlass::static_size(int header_size) {
   // size of an array klass object
   assert(header_size <= InstanceKlass::header_size(), "bad header size");
   // If this assert fails, see comments in base_create_array_klass.
+  // 需要注意ArrayKlass实例所需要的内存的计算逻辑，在计算header_size时获取的是InstanceKlass本身占用的内存空间，而不是ArrayKlass本身占用的内存空间。
+  // 这是因为InstanceKlass本身占用的内存空间比ArrayKlass大，所以以InstanceKlass本身占用的内存空间为标准进行统一操作，在不区分Klass实例的具体类型时，
+  // 只要偏移InstanceKlass::header_size()后就可以获取vtable等信息。
   header_size = InstanceKlass::header_size();
   int vtable_len = Universe::base_vtable_size();
 #ifdef _LP64
@@ -91,8 +94,11 @@ ArrayKlass::ArrayKlass(Symbol* name) {
 // since a GC can happen. At this point all instance variables of the ArrayKlass must be setup.
 void ArrayKlass::complete_create_array_klass(ArrayKlass* k, KlassHandle super_klass, TRAPS) {
   ResourceMark rm(THREAD);
+  // 初始化数组类的父类
   k->initialize_supers(super_klass(), CHECK);
+  // 初始化虚函数表
   k->vtable()->initialize_vtable(false, CHECK);
+  // 完成当前ObjArrayKlass对象对应的java.lang.Class对象的创建并设置相关属性
   java_lang_Class::create_mirror(k, Handle(NULL), CHECK);
 }
 

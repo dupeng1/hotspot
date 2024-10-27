@@ -63,7 +63,7 @@
 
 class Handle VALUE_OBJ_CLASS_SPEC {
  private:
-  oop* _handle;
+  oop* _handle;// 可以看到是对oop的封装
 
  protected:
   oop     obj() const                            { return _handle == NULL ? (oop)NULL : *_handle; }
@@ -76,6 +76,8 @@ class Handle VALUE_OBJ_CLASS_SPEC {
   Handle(Thread* thread, oop obj);
 
   // General access
+  // 获取封装的oop对象，并不会直接调用Handle对象的obj()或non_null_obj()函数，而是通过C++的运算符重载来获取
+  // Handle重载了()和->运算符
   oop     operator () () const                   { return obj(); }
   oop     operator -> () const                   { return non_null_obj(); }
   bool    operator == (oop o) const              { return obj() == o; }
@@ -224,6 +226,7 @@ class HandleArea: public Arena {
   int _handle_mark_nesting;
   int _no_handle_mark_nesting;
 #endif
+  // HandleArea通过_prev连接成单链表
   HandleArea* _prev;          // link to outer (older) area
  public:
   // Constructor
@@ -235,6 +238,7 @@ class HandleArea: public Arena {
 
   // Handle allocation
  private:
+  // 分配内存并存储obj对象
   oop* real_allocate_handle(oop obj) {
 #ifdef ASSERT
     oop* handle = (oop*) (UseMallocOnly ? internal_malloc_4(oopSize) : Amalloc_4(oopSize));
@@ -283,14 +287,21 @@ class HandleArea: public Arena {
 // The base class of HandleMark should have been StackObj but we also heap allocate
 // a HandleMark when a thread is created. The operator new is for this special case.
 
+// 1、Java线程每调用一个Java方法就会创建一个对应的HandleMark保存创建的对象句柄，然后等调用返回后释放这些对象句柄，此时释放的仅是调用当前方法创建的句柄
+// 2、HandleMark主要用于记录当前线程的HandleArea的内存地址top，当相关的作用域执行完成后，当前作用域之内的HandleMark实例会自动销毁
+// 3、创建一个新的HandleMark以后，它保存当前线程的area的_chunk、_hwm和_max等属性，代码执行期间新创建的Handle实例是在当前线程的area中分配内存，这会导致当前线程的area的_chunk、_hwm、_max等属性发生变化，
+// 因此代码执行完成后需要将这些属性恢复至之前的状态，并释放代码执行过程中新创建的Handle实例的内存
 class HandleMark {
  private:
+ // 拥有当前HandleMark实例的线程
   Thread *_thread;              // thread that owns this mark
+  // Chunk和Area配合，获得准确的内存地址
   HandleArea *_area;            // saved handle area
   Chunk *_chunk;                // saved arena chunk
   char *_hwm, *_max;            // saved arena info
   size_t _size_in_bytes;        // size of handle area
   // Link to previous active HandleMark in thread
+  // 通过如下属性让HandleMark形成单链表
   HandleMark* _previous_handle_mark;
 
   void initialize(Thread* thread);                // common code for constructors

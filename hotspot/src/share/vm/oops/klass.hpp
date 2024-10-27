@@ -92,6 +92,10 @@ class klassVtable;
 class ParCompactionManager;
 class KlassSizeStats;
 
+// 1、Java类通过Klass来表示，简单说Klass就是Java类在Hotspot中的C++对等体
+// 2、HotSpot VM在加载Class文件时会在元数据区创建Klass，表示类的元数据，通过Klass可以获取类的常量池、字段和方法等信息
+// 3、提供C++层面的Java类型（包括Java类和Java数组）表示方式，也就是用C++类的对象来描述Java类型
+// 4、方法分配
 class Klass : public Metadata {
   friend class VMStructs;
  protected:
@@ -133,35 +137,47 @@ class Klass : public Metadata {
   //
   // Where to look to observe a supertype (it is &_secondary_super_cache for
   // secondary supers, else is &_primary_supers[depth()].
+  // 快速查找直接父类的一个偏移量，这个偏移量是相对于Klass实例起始地址的偏移量
   juint       _super_check_offset;
 
   // Class name.  Instance classes: java/lang/String, etc.  Array classes: [I,
   // [Ljava/lang/String;, etc.  Set to zero for all other kinds of classes.
+  // 类名
   Symbol*     _name;
 
   // Cache of last observed secondary supertype
+  // Klass指针，保存上一次查询父类的结果
   Klass*      _secondary_super_cache;
   // Array of all secondary supertypes
+  // Klass指针数组，一般存储Java类实现的接口
   Array<Klass*>* _secondary_supers;
   // Ordered list of all primary supertypes
+  // 代表这个类的父类，其类型是一个Klass指针数组，大小固定为8
   Klass*      _primary_supers[_primary_super_limit];
   // java/lang/Class instance mirroring this class
+  // 对应的java/lang/Class对象，可以据此访问类的静态属性
   oop       _java_mirror;
   // Superclass
+  // Klass指针，指向Java类的直接父类
   Klass*      _super;
   // First subclass (NULL if none); _subklass->next_sibling() is next one
+  // Klass指针，指向Java类的直接子类，由于直接子类可能有多个，因此多个子类会通过_next_sibling连接起来
   Klass*      _subklass;
   // Sibling link (or NULL); links all subklasses of a klass
+  // Klass指针，通过该属性可以获取当前类的下一个子类
   Klass*      _next_sibling;
 
   // All klasses loaded by a class loader are chained through these links
+  // Klass指针，ClassLoader加载的下一个Klass
   Klass*      _next_link;
 
   // The VM's representation of the ClassLoader used to load this class.
   // Provide access the corresponding instance java.lang.ClassLoader.
+  // ClassLoaderData指针，可以通过此属性找到加载该Java类的ClassLoader
   ClassLoaderData* _class_loader_data;
 
   jint        _modifier_flags;  // Processed access flags, for use by Class.getModifiers.
+  // 保存Java类的修饰符
   AccessFlags _access_flags;    // Access flags. The class/interface distinction is stored here.
 
   // Biased locking implementation and statistics
@@ -178,7 +194,7 @@ class Klass : public Metadata {
 
   // Constructor
   Klass();
-
+// 通过重载new运算符开辟C++类实例的内存空间
   void* operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw();
 
  public:
@@ -391,10 +407,15 @@ class Klass : public Metadata {
   // subclass check
   bool is_subclass_of(const Klass* k) const;
   // subtype check: true if is_subclass_of, or if k is interface and receiver implements it
+  // 判断当前类是否为k的子类。k可能为接口，如果当前类型实现了k接口，函数也返回true
   bool is_subtype_of(Klass* k) const {
+    // 直接父类的偏移量
     juint    off = k->super_check_offset();
+    // 直接父类
     Klass* sup = *(Klass**)( (address)this + off );
     const juint secondary_offset = in_bytes(secondary_super_cache_offset());
+    // 如果k在 _primary_supers中，那么利用_primary_supers一定能判断出k与当前类的父子关系
+    // 直接父类
     if (sup == k) {
       return true;
     } else if (off != secondary_offset) {

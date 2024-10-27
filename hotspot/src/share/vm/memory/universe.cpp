@@ -243,7 +243,7 @@ void initialize_basic_type_klass(Klass* k, TRAPS) {
   }
   k->append_to_sibling_list();
 }
-// ¸ºÔğ³õÊ¼»¯JVMµÄ»ù±¾ÔËĞĞÊ±»·¾³£¬°üÀ¨Àà¼ÓÔØÆ÷¡¢»ù±¾ÀàĞÍÊı×éÀà¡¢ÏµÍ³×ÖµäµÈºËĞÄ×é¼ş
+// è´Ÿè´£åˆå§‹åŒ–JVMçš„åŸºæœ¬è¿è¡Œæ—¶ç¯å¢ƒï¼ŒåŒ…æ‹¬ç±»åŠ è½½å™¨ã€åŸºæœ¬ç±»å‹æ•°ç»„ç±»ã€ç³»ç»Ÿå­—å…¸ç­‰æ ¸å¿ƒç»„ä»¶
 void Universe::genesis(TRAPS) {
   ResourceMark rm;
 
@@ -252,9 +252,11 @@ void Universe::genesis(TRAPS) {
     { MutexLocker mc(Compile_lock);
 
       // determine base vtable size; without that we cannot create the array klasses
+      // è®¡ç®—æ•°ç»„çš„vtableå¤§å°ï¼Œå€¼ä¸º5
       compute_base_vtable_size();
 
       if (!UseSharedSpaces) {
+        // åˆ›å»ºä¸€ç»´æ•°ç»„ç±»å‹
         _boolArrayKlassObj      = TypeArrayKlass::create_klass(T_BOOLEAN, sizeof(jboolean), CHECK);
         _charArrayKlassObj      = TypeArrayKlass::create_klass(T_CHAR,    sizeof(jchar),    CHECK);
         _singleArrayKlassObj    = TypeArrayKlass::create_klass(T_FLOAT,   sizeof(jfloat),   CHECK);
@@ -263,7 +265,7 @@ void Universe::genesis(TRAPS) {
         _shortArrayKlassObj     = TypeArrayKlass::create_klass(T_SHORT,   sizeof(jshort),   CHECK);
         _intArrayKlassObj       = TypeArrayKlass::create_klass(T_INT,     sizeof(jint),     CHECK);
         _longArrayKlassObj      = TypeArrayKlass::create_klass(T_LONG,    sizeof(jlong),    CHECK);
-
+        // åˆ›å»ºå‡ºæ¥çš„ä¸€ç»´æ•°ç»„ä¼šè¢«å­˜å‚¨åˆ°ç±»å‹ä¸ºKlass*çš„_typeArrayKlassObjsï¼Œè¿™æ ·å¯ä»¥æ ¹æ®è¿™äº›ä¸€ç»´æ•°ç»„çš„TypeArrayKlasså®ä¾‹åˆ›å»ºå‡ºå¤šç»´æ•°ç»„äº†
         _typeArrayKlassObjs[T_BOOLEAN] = _boolArrayKlassObj;
         _typeArrayKlassObjs[T_CHAR]    = _charArrayKlassObj;
         _typeArrayKlassObjs[T_FLOAT]   = _singleArrayKlassObj;
@@ -282,9 +284,9 @@ void Universe::genesis(TRAPS) {
         _the_empty_klass_array      = MetadataFactory::new_array<Klass*>(null_cld, 0, CHECK);
       }
     }
-    // ĞéÄâ»ú·ûºÅ±í³õÊ¼»¯£º³õÊ¼»¯ĞéÄâ»ú·ûºÅ±í£¬Ëü°üº¬ÁËJVMÄÚ²¿Ê¹ÓÃµÄ³£Á¿·ûºÅÒıÓÃ¡£
+    // è™šæ‹Ÿæœºç¬¦å·è¡¨åˆå§‹åŒ–ï¼šåˆå§‹åŒ–è™šæ‹Ÿæœºç¬¦å·è¡¨ï¼Œå®ƒåŒ…å«äº†JVMå†…éƒ¨ä½¿ç”¨çš„å¸¸é‡ç¬¦å·å¼•ç”¨ã€‚
     vmSymbols::initialize(CHECK);
-    // ÏµÍ³×Öµä³õÊ¼»¯£ºËüÊÇ¹ÜÀíÒÑ¼ÓÔØÀàµÄÈ«¾Ö×Öµä¡£
+    // ç³»ç»Ÿå­—å…¸åˆå§‹åŒ–ï¼šå®ƒæ˜¯ç®¡ç†å·²åŠ è½½ç±»çš„å…¨å±€å­—å…¸ã€‚
     SystemDictionary::initialize(CHECK);
 
     Klass* ok = SystemDictionary::Object_klass();
@@ -303,7 +305,7 @@ void Universe::genesis(TRAPS) {
       _the_array_interfaces_array->at_put(0, SystemDictionary::Cloneable_klass());
       _the_array_interfaces_array->at_put(1, SystemDictionary::Serializable_klass());
     }
-    // »ù±¾ÀàĞÍÊı×éÀàµÄ½øÒ»²½³õÊ¼»¯£º¶ÔÃ¿¸ö»ù±¾ÀàĞÍÊı×éÀàµ÷ÓÃinitialize_basic_type_klass£¬Íê³ÉÀàµÄ³õÊ¼»¯¹¤×÷£¬ÈçÉèÖÃ³¬ÀàµÈ¡£
+    // åŸºæœ¬ç±»å‹æ•°ç»„ç±»çš„è¿›ä¸€æ­¥åˆå§‹åŒ–ï¼šå¯¹æ¯ä¸ªåŸºæœ¬ç±»å‹æ•°ç»„ç±»è°ƒç”¨initialize_basic_type_klassï¼Œå®Œæˆç±»çš„åˆå§‹åŒ–å·¥ä½œï¼Œå¦‚è®¾ç½®è¶…ç±»ç­‰ã€‚
     initialize_basic_type_klass(boolArrayKlassObj(), CHECK);
     initialize_basic_type_klass(charArrayKlassObj(), CHECK);
     initialize_basic_type_klass(singleArrayKlassObj(), CHECK);
@@ -326,7 +328,7 @@ void Universe::genesis(TRAPS) {
   // ordinary object arrays, _objectArrayKlass will be loaded when
   // SystemDictionary::initialize(CHECK); is run. See the extra check
   // for Object_klass_loaded in objArrayKlassKlass::allocate_objArray_klass_impl.
-  // ¶ÔÏóÊı×éÀàµÄ³õÊ¼»¯£º
+  // å¯¹è±¡æ•°ç»„ç±»çš„åˆå§‹åŒ–ï¼š
   _objectArrayKlassObj = InstanceKlass::
     cast(SystemDictionary::Object_klass())->array_klass(1, CHECK);
   // OLD
@@ -341,7 +343,7 @@ void Universe::genesis(TRAPS) {
   // Only 1.3 or later has the java.lang.Shutdown class.
   // Only 1.4 or later has the java.lang.CharSequence interface.
   // Only 1.5 or later has the java.lang.management.MemoryUsage class.
-  // JDK°æ±¾¼ì²â£º¸ù¾İÊÇ·ñ¿ÉÒÔ½âÎöÌØ¶¨Àà£¨Èçjava.lang.management.MemoryUsage¡¢java.lang.CharSequence¡¢java.lang.Shutdown£©£¬È·¶¨µ±Ç°JDK°æ±¾µÄÌØĞÔ±êÖ¾¡£
+  // JDKç‰ˆæœ¬æ£€æµ‹ï¼šæ ¹æ®æ˜¯å¦å¯ä»¥è§£æç‰¹å®šç±»ï¼ˆå¦‚java.lang.management.MemoryUsageã€java.lang.CharSequenceã€java.lang.Shutdownï¼‰ï¼Œç¡®å®šå½“å‰JDKç‰ˆæœ¬çš„ç‰¹æ€§æ ‡å¿—ã€‚
   if (JDK_Version::is_partially_initialized()) {
     uint8_t jdk_version;
     Klass* k = SystemDictionary::resolve_or_null(
@@ -410,7 +412,7 @@ void Universe::genesis(TRAPS) {
   #endif
 
   // Initialize dependency array for null class loader
-  // Àà¼ÓÔØÆ÷ÒÀÀµ¹ØÏµ³õÊ¼»¯£º³õÊ¼»¯¿ÕÀà¼ÓÔØÆ÷µÄÒÀÀµ¹ØÏµÊı×é£¬ÒÔÎ¬»¤Àà¼ÓÔØË³ĞòºÍ¿É¼ûĞÔ¹æÔò¡£
+  // ç±»åŠ è½½å™¨ä¾èµ–å…³ç³»åˆå§‹åŒ–ï¼šåˆå§‹åŒ–ç©ºç±»åŠ è½½å™¨çš„ä¾èµ–å…³ç³»æ•°ç»„ï¼Œä»¥ç»´æŠ¤ç±»åŠ è½½é¡ºåºå’Œå¯è§æ€§è§„åˆ™ã€‚
   ClassLoaderData::the_null_class_loader_data()->init_dependencies(CHECK);
 
 }
@@ -634,45 +636,45 @@ jint universe_init() {
   guarantee(sizeof(oop) >= sizeof(HeapWord), "HeapWord larger than oop?");
   guarantee(sizeof(oop) % sizeof(HeapWord) == 0,
             "oop size is not not a multiple of HeapWord size");
-  //¼ÆÊ±Æô¶¯½×¶Î
-  //¼ÇÂ¼ÃûÎª"Genesis"µÄ½×¶Î¿ªÊ¼Ê±¼ä£¬ÕâÓĞÖúÓÚĞÔÄÜ·ÖÎöºÍµ÷ÊÔ£¬ÌØ±ğÊÇÔÚJVMÆô¶¯½×¶Î¡£
+  //è®¡æ—¶å¯åŠ¨é˜¶æ®µ
+  //è®°å½•åä¸º"Genesis"çš„é˜¶æ®µå¼€å§‹æ—¶é—´ï¼Œè¿™æœ‰åŠ©äºæ€§èƒ½åˆ†æå’Œè°ƒè¯•ï¼Œç‰¹åˆ«æ˜¯åœ¨JVMå¯åŠ¨é˜¶æ®µã€‚
   TraceTime timer("Genesis", TraceStartupTime);
 
-  //Ëø¶¨GC²Ù×÷
-  //À´×èÖ¹ÔÚÒıµ¼ÆÚ¼ä½øĞĞÀ¬»ø»ØÊÕ£¨GC£©¡£ÕâÊÇ±ØÒªµÄ£¬ÒòÎªÔÚ³õÊ¼»¯¹ı³ÌÖĞÄÚ´æ²¼¾Ö²»ÎÈ¶¨£¬·ÀÖ¹GC¿ÉÄÜµ¼ÖÂ´íÎó»ò³åÍ»¡£
+  //é”å®šGCæ“ä½œ
+  //æ¥é˜»æ­¢åœ¨å¼•å¯¼æœŸé—´è¿›è¡Œåƒåœ¾å›æ”¶ï¼ˆGCï¼‰ã€‚è¿™æ˜¯å¿…è¦çš„ï¼Œå› ä¸ºåœ¨åˆå§‹åŒ–è¿‡ç¨‹ä¸­å†…å­˜å¸ƒå±€ä¸ç¨³å®šï¼Œé˜²æ­¢GCå¯èƒ½å¯¼è‡´é”™è¯¯æˆ–å†²çªã€‚
   GC_locker::lock();  // do not allow gc during bootstrapping
 
-  //¼ÆËãÓ²±àÂëÆ«ÒÆÁ¿
-  //¼ÆËãÀà½á¹¹ÖĞÓ²±àÂë×Ö¶ÎµÄÆ«ÒÆÁ¿£¬ÕâĞ©Æ«ÒÆÁ¿¶ÔÓÚ¿ìËÙ·ÃÎÊÀàÔªÊı¾İÖÁ¹ØÖØÒª¡£
+  //è®¡ç®—ç¡¬ç¼–ç åç§»é‡
+  //è®¡ç®—ç±»ç»“æ„ä¸­ç¡¬ç¼–ç å­—æ®µçš„åç§»é‡ï¼Œè¿™äº›åç§»é‡å¯¹äºå¿«é€Ÿè®¿é—®ç±»å…ƒæ•°æ®è‡³å…³é‡è¦ã€‚
   JavaClasses::compute_hard_coded_offsets();
 
-  //³õÊ¼»¯¶Ñ
-  //³õÊ¼»¯Java¶Ñ£¬Èç¹û¶Ñ³õÊ¼»¯Ê§°Ü£¨·µ»ØÖµ²»ÎªJNI_OK£©£¬ÔòÖ±½Ó·µ»Ø´íÎó×´Ì¬¡£
+  //åˆå§‹åŒ–å †
+  //åˆå§‹åŒ–Javaå †ï¼Œå¦‚æœå †åˆå§‹åŒ–å¤±è´¥ï¼ˆè¿”å›å€¼ä¸ä¸ºJNI_OKï¼‰ï¼Œåˆ™ç›´æ¥è¿”å›é”™è¯¯çŠ¶æ€ã€‚
   jint status = Universe::initialize_heap();
   if (status != JNI_OK) {
     return status;
   }
 
-  //ÔªÊı¾İ¿Õ¼äÈ«¾Ö³õÊ¼»¯
-  //³õÊ¼»¯ÔªÊı¾İ¿Õ¼ä£¨Metaspace£©£¬ÓÃÓÚ´æ´¢Àà¡¢·½·¨µÈµÄÔªÊı¾İĞÅÏ¢¡£
+  //å…ƒæ•°æ®ç©ºé—´å…¨å±€åˆå§‹åŒ–
+  //åˆå§‹åŒ–å…ƒæ•°æ®ç©ºé—´ï¼ˆMetaspaceï¼‰ï¼Œç”¨äºå­˜å‚¨ç±»ã€æ–¹æ³•ç­‰çš„å…ƒæ•°æ®ä¿¡æ¯ã€‚
   Metaspace::global_initialize();
 
   // Create memory for metadata.  Must be after initializing heap for
   // DumpSharedSpaces.
-  //³õÊ¼»¯¿ÕÀà¼ÓÔØÆ÷Êı¾İ
-  //´´½¨´ú±í¿Õ£¨»ò¡°Òıµ¼¡±£©Àà¼ÓÔØÆ÷µÄÊı¾İ½á¹¹£¬ÕâÊÇËùÓĞÀà¼ÓÔØÆ÷µÄ¸ù¡£
+  //åˆå§‹åŒ–ç©ºç±»åŠ è½½å™¨æ•°æ®
+  //åˆ›å»ºä»£è¡¨ç©ºï¼ˆæˆ–â€œå¼•å¯¼â€ï¼‰ç±»åŠ è½½å™¨çš„æ•°æ®ç»“æ„ï¼Œè¿™æ˜¯æ‰€æœ‰ç±»åŠ è½½å™¨çš„æ ¹ã€‚
   ClassLoaderData::init_null_class_loader_data();
 
   // We have a heap so create the Method* caches before
   // Metaspace::initialize_shared_spaces() tries to populate them.
-  //´´½¨·½·¨»º´æ
+  //åˆ›å»ºæ–¹æ³•ç¼“å­˜
   Universe::_finalizer_register_cache = new LatestMethodCache();
   Universe::_loader_addClass_cache    = new LatestMethodCache();
   Universe::_pd_implies_cache         = new LatestMethodCache();
 
-  //´¦Àí¹²Ïí¿Õ¼ä
-  //ÈôÊ¹ÓÃ¹²Ïí¿Õ¼ä£¬Ôòµ÷ÓÃMetaspaceShared::initialize_shared_spaces();
-  //³õÊ¼»¯¹²Ïí¿Õ¼ä£¬Õâ°üÀ¨´Ó¹²Ïí¿â¼ÓÔØÏµÍ³×Öµä¡¢·ûºÅ±íµÈ¡£
+  //å¤„ç†å…±äº«ç©ºé—´
+  //è‹¥ä½¿ç”¨å…±äº«ç©ºé—´ï¼Œåˆ™è°ƒç”¨MetaspaceShared::initialize_shared_spaces();
+  //åˆå§‹åŒ–å…±äº«ç©ºé—´ï¼Œè¿™åŒ…æ‹¬ä»å…±äº«åº“åŠ è½½ç³»ç»Ÿå­—å…¸ã€ç¬¦å·è¡¨ç­‰ã€‚
   if (UseSharedSpaces) {
     // Read the data structures supporting the shared spaces (shared
     // system dictionary, symbol table, etc.).  After that, access to
@@ -682,8 +684,8 @@ jint universe_init() {
     MetaspaceShared::initialize_shared_spaces();
     StringTable::create_table();
   } else {
-    //Èô²»Ê¹ÓÃ¹²Ïí¿Õ¼ä£¬Ôò¶ÀÁ¢´´½¨SymbolTable£¨·ûºÅ±í£©¡¢StringTable£¨×Ö·û´®±í£©
-    //ºÍÍ¨¹ıClassLoader::create_package_info_table();´´½¨°üĞÅÏ¢±í¡£
+    //è‹¥ä¸ä½¿ç”¨å…±äº«ç©ºé—´ï¼Œåˆ™ç‹¬ç«‹åˆ›å»ºSymbolTableï¼ˆç¬¦å·è¡¨ï¼‰ã€StringTableï¼ˆå­—ç¬¦ä¸²è¡¨ï¼‰
+    //å’Œé€šè¿‡ClassLoader::create_package_info_table();åˆ›å»ºåŒ…ä¿¡æ¯è¡¨ã€‚
     SymbolTable::create_table();
     StringTable::create_table();
     ClassLoader::create_package_info_table();
@@ -797,17 +799,25 @@ char* Universe::preferred_heap_base(size_t heap_size, size_t alignment, NARROW_O
   return (char*)base; // also return NULL (don't care) for 32-bit VM
 }
 
-// ¸ºÔğ³õÊ¼»¯JVMµÄ¶ÑÄÚ´æ¹ÜÀí×ÓÏµÍ³¡£¸ù¾İ²»Í¬µÄÀ¬»øÊÕ¼¯Æ÷£¨GC£©Ñ¡Ïî£¬Ñ¡Ôñ²¢ÅäÖÃÏàÓ¦µÄ¶Ñ¹ÜÀí²ßÂÔ
+// ä¸»è¦å°±æ˜¯ä¾æ®å„ä¸ªGCç›¸å…³çš„Â optionä½¿ç”¨ä¸åŒç±»å‹çš„Â CollectedHeapï¼Œ
+// ä¹Ÿå°±æ˜¯Â ParallelScavengeHeapã€‚Â G1CollectedHeapå’ŒÂ GenCollectedHeapã€‚
+// ä¸åŒç±»å‹çš„CollectedHeapæœ‰ä¸åŒçš„Â CollectorPolicyã€‚
+
+// CollectedHeap
+//   SharedHeap
+//     GenCollectedHeap
+//     G1CollectedHeap
+//   ParallelScavengeHeap
 jint Universe::initialize_heap() {
 
-  if (UseParallelGC) {// UseParallelGC
+  if (UseParallelGC) {  // -XX:+UseParallelGC
 #if INCLUDE_ALL_GCS
     Universe::_collectedHeap = new ParallelScavengeHeap();
 #else  // INCLUDE_ALL_GCS
     fatal("UseParallelGC not supported in this VM.");
 #endif // INCLUDE_ALL_GCS
 
-  } else if (UseG1GC) {// UseG1GC
+  } else if (UseG1GC) {// -XX:+UseG1GC
 #if INCLUDE_ALL_GCS
     G1CollectorPolicy* g1p = new G1CollectorPolicy();
     g1p->initialize_all();
@@ -817,12 +827,12 @@ jint Universe::initialize_heap() {
     fatal("UseG1GC not supported in java kernel vm.");
 #endif // INCLUDE_ALL_GCS
 
-  } else {// ¶ÔÓÚÆäËûÇé¿ö
+  } else {// å¯¹äºå…¶ä»–æƒ…å†µ
     GenCollectorPolicy *gc_policy;
 
-    if (UseSerialGC) {
+    if (UseSerialGC) {    // -XX:+UseSerialGC
       gc_policy = new MarkSweepPolicy();
-    } else if (UseConcMarkSweepGC) {
+    } else if (UseConcMarkSweepGC) {    // -XX:+UseConcMarkSweepGC
 #if INCLUDE_ALL_GCS
       if (UseAdaptiveSizePolicy) {
         gc_policy = new ASConcurrentMarkSweepPolicy();
@@ -835,11 +845,12 @@ jint Universe::initialize_heap() {
     } else { // default old generation
       gc_policy = new MarkSweepPolicy();
     }
+    // å®Œæˆç­–ç•¥åˆå§‹åŒ–ï¼Œinitialize_all()æ˜¯çˆ¶ç±»GenCollectorPolicy()çš„è™šå‡½æ•°ï¼Œå®ƒè°ƒç”¨äº†ä¸‰ä¸ªå­åˆå§‹åŒ–è™šå‡½æ•°ï¼Œè¿™ä¸‰ä¸ªå­åˆå§‹åŒ–è¿‡ç¨‹ç”±GenCollectorPolicyçš„å­ç±»å®ç°ã€‚
     gc_policy->initialize_all();
 
     Universe::_collectedHeap = new GenCollectedHeap(gc_policy);
   }
-  // Ê¹ÓÃÉÏÊöÑ¡ÔñµÄ¶Ñ²ßÂÔÊµÀı£¬µ÷ÓÃUniverse::heap()->initialize()³õÊ¼»¯¶Ñ
+  // ä½¿ç”¨ä¸Šè¿°é€‰æ‹©çš„å †ç­–ç•¥å®ä¾‹ï¼Œè°ƒç”¨Universe::heap()->initialize()åˆå§‹åŒ–å †
   jint status = Universe::heap()->initialize();
   if (status != JNI_OK) {
     return status;
@@ -907,7 +918,7 @@ jint Universe::initialize_heap() {
 
   // We will never reach the CATCH below since Exceptions::_throw will cause
   // the VM to exit if an exception is thrown during initialization
-  // Ïß³Ì±¾µØ·ÖÅä»º³åÇø£¨TLAB£©³õÊ¼»¯£ºÈç¹ûÆôÓÃTLAB£¨UseTLAB£©£¬È·±£¶Ñ¹ÜÀíÆ÷Ö§³ÖTLAB·ÖÅä£¬²¢Ö´ĞĞTLABµÄÆô¶¯³õÊ¼»¯¡£
+  // çº¿ç¨‹æœ¬åœ°åˆ†é…ç¼“å†²åŒºï¼ˆTLABï¼‰åˆå§‹åŒ–ï¼šå¦‚æœå¯ç”¨TLABï¼ˆUseTLABï¼‰ï¼Œç¡®ä¿å †ç®¡ç†å™¨æ”¯æŒTLABåˆ†é…ï¼Œå¹¶æ‰§è¡ŒTLABçš„å¯åŠ¨åˆå§‹åŒ–ã€‚
   if (UseTLAB) {
     assert(Universe::heap()->supports_tlab_allocation(),
            "Should support thread-local allocation buffers");
@@ -932,7 +943,7 @@ ReservedSpace Universe::reserve_heap(size_t heap_size, size_t alignment) {
       || use_large_pages, "Wrong alignment to use large pages");
 
   char* addr = Universe::preferred_heap_base(total_reserved, alignment, Universe::UnscaledNarrowOop);
-
+  // â€‹ è¿™é‡Œå°±æ˜¯é€šè¿‡ReservedHeapSpace total_rs(total_reserved, alignment, use_large_pages);æ¥åˆ›å»ºè¿™ä¸ªç©ºé—´ã€‚
   ReservedHeapSpace total_rs(total_reserved, alignment, use_large_pages, addr);
 
   if (UseCompressedOops) {

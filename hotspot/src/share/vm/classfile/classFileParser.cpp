@@ -781,6 +781,7 @@ Array<Klass*>* ClassFileParser::parse_interfaces(int length,
   } else {
     ClassFileStream* cfs = stream();
     assert(length > 0, "only called for length>0");
+    // 调用工厂函数创建一个大小为length的数组，元素的类型为Klass*
     _local_interfaces = MetadataFactory::new_array<Klass*>(_loader_data, length, NULL, CHECK_NULL);
 
     int index;
@@ -791,9 +792,13 @@ Array<Klass*>* ClassFileParser::parse_interfaces(int length,
         valid_klass_reference_at(interface_index),
         "Interface name has bad constant pool index %u in class file %s",
         interface_index, CHECK_NULL);
+      // 如果接口索引在常量池中已经是对应的InstanceKlass实例，说明已经连接过了，直接通过resolved_klass_at()函数获取即可;
       if (_cp->tag_at(interface_index).is_klass()) {
         interf = KlassHandle(THREAD, _cp->resolved_klass_at(interface_index));
-      } else {
+      } 
+      // 如果只是一个字符串表示，则需要调用SystemDictionary::resolve_super_or_fail()函数进行类的加载，
+      // 该函数在SystemDictionary中如果没有查到对应的Klass实例，还会调用SystemDictionary::resolve_or_null()函数加载类
+      else {
         Symbol*  unresolved_klass  = _cp->klass_name_at(interface_index);
 
         // Don't need to check legal name because it's checked when parsing constant pool.
@@ -806,6 +811,7 @@ Array<Klass*>* ClassFileParser::parse_interfaces(int length,
         Klass* k = SystemDictionary::resolve_super_or_fail(class_name,
                       unresolved_klass, class_loader, protection_domain,
                       false, CHECK_NULL);
+        //将代表接口的InstanceKlass实例封装为KlassHandle实例
         interf = KlassHandle(THREAD, k);
       }
 
@@ -3159,12 +3165,15 @@ AnnotationArray* ClassFileParser::assemble_annotations(u1* runtime_visible_annot
 instanceKlassHandle ClassFileParser::parse_super_class(int super_class_index,
                                                        TRAPS) {
   instanceKlassHandle super_klass;
+  // 当前类为java.lang.Object时，没有父类
   if (super_class_index == 0) {
     check_property(_class_name == vmSymbols::java_lang_Object(),
                    "Invalid superclass index %u in class file %s",
                    super_class_index,
                    CHECK_NULL);
-  } else {
+  } 
+  //判断常量池中super_class_index下标索引处存储的是否为JVM_CONSTANT_Class常量池项，如果是，则is_klass()函数将返回true
+  else {
     check_property(valid_klass_reference_at(super_class_index),
                    "Invalid superclass index %u in class file %s",
                    super_class_index,
@@ -3172,6 +3181,7 @@ instanceKlassHandle ClassFileParser::parse_super_class(int super_class_index,
     // The class name should be legal because it is checked when parsing constant pool.
     // However, make sure it is not an array type.
     bool is_array = false;
+    // is_klass判断tag是否为JVM_CONSTANT_Class常量池项
     if (_cp->tag_at(super_class_index).is_klass()) {
       super_klass = instanceKlassHandle(THREAD, _cp->resolved_klass_at(super_class_index));
       if (_need_verify)
@@ -3718,7 +3728,7 @@ void ClassFileParser::layout_fields(Handle class_loader,
   info->has_nonstatic_fields = has_nonstatic_fields;
 }
 
-
+// 按照Java虚拟机规范定义的Class文件格式解析
 instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
                                                     ClassLoaderData* loader_data,
                                                     Handle protection_domain,
@@ -3800,14 +3810,19 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
 
   //剩余大小必须>=8
   cfs->guarantee_more(8, CHECK_(nullHandle));  // magic, major, minor
+  // 1、解析魔数、次版本号、主版本号
   // Magic value
+  // 解析魔数
   u4 magic = cfs->get_u4_fast();
+  // 验证魔数
   guarantee_property(magic == JAVA_CLASSFILE_MAGIC,
                      "Incompatible magic value %u in class file %s",
                      magic, CHECK_(nullHandle));
 
   // Version numbers
+  // 解析次版本号
   u2 minor_version = cfs->get_u2_fast();
+  // 解析主版本号
   u2 major_version = cfs->get_u2_fast();
 
   // Check version numbers - we check this even with verifier off
@@ -3831,7 +3846,7 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
     }
     return nullHandle;
   }
-
+  // 保存到ClassrileParser实例的相关属性中
   _major_version = major_version;
   _minor_version = minor_version;
 
@@ -3848,24 +3863,28 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
   cfs->guarantee_more(8, CHECK_(nullHandle));  // flags, this_class, super_class, infs_len
 
   // Access flags
+  // 2、解析访问标识，访问标识是一个u2类型的数据
   AccessFlags access_flags;
+  // 获取访问标识
   jint flags = cfs->get_u2_fast() & JVM_RECOGNIZED_CLASS_MODIFIERS;
 
   if ((flags & JVM_ACC_INTERFACE) && _major_version < JAVA_6_VERSION) {
     // Set abstract bit for old class files for backward compatibility
     flags |= JVM_ACC_ABSTRACT;
   }
+  // 验证访问标识的合法性
   verify_legal_class_modifiers(flags, CHECK_(nullHandle));
   access_flags.set_flags(flags);
 
   // This class and superclass
+  // 3、解析当前类索引，类索引是一个u2类型的数据，用于确定这个类的全限定名
   u2 this_class_index = cfs->get_u2_fast();
   check_property(
     valid_cp_range(this_class_index, cp_size) &&
       cp->tag_at(this_class_index).is_unresolved_klass(),
     "Invalid this class index %u in constant pool in class file %s",
     this_class_index, CHECK_(nullHandle));
-
+  // 解析常量池
   Symbol*  class_name  = cp->unresolved_klass_at(this_class_index);
   assert(class_name != NULL, "class_name can't be null");
 
@@ -3911,12 +3930,13 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
       if (cfs->source() != NULL) tty->print(" from %s", cfs->source());
       tty->print_cr("]");
     }
-
+    // 4、解析父类索引
     u2 super_class_index = cfs->get_u2_fast();
     instanceKlassHandle super_klass = parse_super_class(super_class_index,
                                                         CHECK_NULL);
 
     // Interfaces
+    // 5、解析实现接口
     u2 itfs_len = cfs->get_u2_fast();
     Array<Klass*>* local_interfaces =
       parse_interfaces(itfs_len, protection_domain, _class_name,

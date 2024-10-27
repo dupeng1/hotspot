@@ -52,6 +52,7 @@ void ConcurrentMarkSweepPolicy::initialize_alignments() {
   _heap_alignment = compute_heap_alignment();
 }
 
+// 实现了分代生成器的初始化
 void ConcurrentMarkSweepPolicy::initialize_generations() {
   _generations = NEW_C_HEAP_ARRAY3(GenerationSpecPtr, number_of_generations(), mtGC, 0, AllocFailStrategy::RETURN_NULL);
   if (_generations == NULL)

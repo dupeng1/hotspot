@@ -749,6 +749,18 @@ void LinkResolver::check_field_accessability(KlassHandle ref_klass,
   }
 }
 
+// 从pool中查找到index处的索引项为CONSTANT_NameAndType_info，格式如下
+// CONSTANT_NameAndType_info {
+//    u1 tag;
+//    u2 name_index;       // 占用16位
+//    u2 descriptor_index; // 占用16位
+// }
+// 常量池中的一个CONSTANT_NameAndType_info数据项， 可以看做CONSTANT_NameAndType类型的一个实例 。 
+// 从这个数据项的名称可以看出， 它描述了两种信息，第一种信息是名称（Name）， 第二种信息是类型（Type） 。
+// 这里的名称是指方法的名称或者字段的名称， 而Type是广义上的类型，它其实描述的是字段的描述符或方法的描述符。 
+// 也就是说， 如果Name部分是一个字段名称，那么Type部分就是相应字段的描述符； 
+// 如果Name部分描述的是一个方法的名称，那么Type部分就是对应的方法的描述符。 
+// 也就是说，一个CONSTANT_NameAndType_info就表示了一个方法或一个字段。
 void LinkResolver::resolve_field_access(fieldDescriptor& result, constantPoolHandle pool, int index, Bytecodes::Code byte, TRAPS) {
   // Load these early in case the resolve of the containing klass fails
   Symbol* field = pool->name_ref_at(index);
@@ -756,9 +768,11 @@ void LinkResolver::resolve_field_access(fieldDescriptor& result, constantPoolHan
 
   // resolve specified klass
   KlassHandle resolved_klass;
+  // 连接类
   resolve_klass(resolved_klass, pool, index, CHECK);
 
   KlassHandle  current_klass(THREAD, pool->pool_holder());
+  // 连接字段
   resolve_field(result, resolved_klass, field, sig, current_klass, byte, true, true, CHECK);
 }
 

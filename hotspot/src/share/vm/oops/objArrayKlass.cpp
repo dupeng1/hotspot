@@ -60,12 +60,13 @@
 ObjArrayKlass* ObjArrayKlass::allocate(ClassLoaderData* loader_data, int n, KlassHandle klass_handle, Symbol* name, TRAPS) {
   assert(ObjArrayKlass::header_size() <= InstanceKlass::header_size(),
       "array klasses must be same size as InstanceKlass");
-
+  // 首先需要调用ArrayKlass::static_size()计算出ObjArrayKlass实例所需要的内存，
   int size = ArrayKlass::static_size(ObjArrayKlass::header_size());
-
+  // 然后调用new重载运算符从元空间中分配指定大小的内存，最后调用0bjArrayKlass的构造函数初始化相关属性。
   return new (loader_data, size, THREAD) ObjArrayKlass(n, klass_handle, name);
 }
 
+// 创建组合类型为element_klass的n维数组，参数element_klass有可能为TypeArrayKlass、0bjArrayKlass、InstanceKlass
 Klass* ObjArrayKlass::allocate_objArray_klass(ClassLoaderData* loader_data,
                                                 int n, KlassHandle element_klass, TRAPS) {
 
@@ -114,6 +115,7 @@ Klass* ObjArrayKlass::allocate_objArray_klass(ClassLoaderData* loader_data,
   }
 
   // Create type name for klass.
+  // 为n维数组的ObjArrayKlass创建名称
   Symbol* name = NULL;
   if (!element_klass->oop_is_instance() ||
       (name = InstanceKlass::cast(element_klass())->array_name()) == NULL) {
@@ -141,11 +143,14 @@ Klass* ObjArrayKlass::allocate_objArray_klass(ClassLoaderData* loader_data,
   }
 
   // Initialize instance variables
+  // 创建组合类型为element_klass、维度为n、名称为name的ObjArrayKlass
+  // TypeArrayKlass表示一维字节数组，n为2，name为[[B，最终会创建出对应的ObjArrayKlass实例
   ObjArrayKlass* oak = ObjArrayKlass::allocate(loader_data, n, element_klass, name, CHECK_0);
 
   // Add all classes to our internal class loader list here,
   // including classes in the bootstrap (NULL) class loader.
   // GC walks these as strong roots.
+  // 将创建的类型加到类加载器列表中，在垃圾回收时会当作强根处理
   loader_data->add_class(oak);
 
   // Call complete_create_array_klass after all instance variables has been initialized.
@@ -343,6 +348,7 @@ Klass* ObjArrayKlass::array_klass_impl(bool or_null, int n, TRAPS) {
       if (higher_dimension() == NULL) {
 
         // Create multi-dim klass object and link them together
+        // 以当前的ObjArrayKlass实例为组件类型，创建比当前dim维度多一维度的数组
         Klass* k =
           ObjArrayKlass::allocate_objArray_klass(class_loader_data(), dim + 1, this, CHECK_NULL);
         ObjArrayKlass* ak = ObjArrayKlass::cast(k);
@@ -355,7 +361,7 @@ Klass* ObjArrayKlass::array_klass_impl(bool or_null, int n, TRAPS) {
   } else {
     CHECK_UNHANDLED_OOPS_ONLY(Thread::current()->clear_unhandled_oops());
   }
-
+  //如果dim+1维的objArrayKlass仍然不是n维的，则会间接递归调用当前的array_klass_impl()函数继续创建dim+2和dim+3等ObjArrayKlass实例，直到此实例的维度等于n
   ObjArrayKlass *ak = ObjArrayKlass::cast(higher_dimension());
   if (or_null) {
     return ak->array_klass_or_null(n);
@@ -364,6 +370,7 @@ Klass* ObjArrayKlass::array_klass_impl(bool or_null, int n, TRAPS) {
 }
 
 Klass* ObjArrayKlass::array_klass_impl(bool or_null, TRAPS) {
+  // 创建比当前维度多一个维度的数组
   return array_klass_impl(or_null, dimension() +  1, CHECK_NULL);
 }
 

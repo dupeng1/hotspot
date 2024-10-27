@@ -130,8 +130,10 @@ class ConstantPool : public Metadata {
   CPSlot slot_at(int which) {
     assert(is_within_bounds(which), "index out of bounds");
     // Uses volatile because the klass slot changes without a lock.
+    // obj_at_addr_raw()函数获取ConstantPool中对应索引处存储的值
     volatile intptr_t adr = (intptr_t)OrderAccess::load_ptr_acquire(obj_at_addr_raw(which));
     assert(adr != 0 || which == 0, "cp entry for klass should not be zero");
+    // 封装为CPSlot
     return CPSlot(adr);
   }
 

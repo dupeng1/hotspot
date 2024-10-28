@@ -119,11 +119,12 @@ void ClassFileParser::parse_constant_pool_entries(int length, TRAPS) {
     // Each of the following case guarantees one more byte in the stream
     // for the following tag or the access_flags following constant pool,
     // so we don't need bounds-check for reading tag.
+    //获取常量池项中的tag属性值
     u1 tag = cfs->get_u1_fast();
     switch (tag) {
-	//总共14个tag，
-	//除了MethodHandle、MethodType、InvokeDynamic
-	//基本上按<<jvms8>>中的小节顺序来定case的先后
+    //总共14个tag，
+    //除了MethodHandle、MethodType、InvokeDynamic
+    //基本上按<<jvms8>>中的小节顺序来定case的先后
       case JVM_CONSTANT_Class :
         {
           //下面的guarantee_more总是多一个字节
@@ -330,17 +331,20 @@ constantPoolHandle ClassFileParser::parse_constant_pool(TRAPS) {
   constantPoolHandle nullHandle;
 
   cfs->guarantee_more(3, CHECK_(nullHandle)); // length, first cp tag
+  // 获取常量池大小
   u2 length = cfs->get_u2_fast();
   //因为0号下标默认是被保留的，所以常量池的条目数至少有一个
   guarantee_property(
     length >= 1, "Illegal constant pool size %u in class file %s",
     length, CHECK_(nullHandle));
+    // 创建ConstantPool实例
   ConstantPool* constant_pool = ConstantPool::allocate(_loader_data, length,
                                                         CHECK_(nullHandle));
   _cp = constant_pool; // save in case of errors
   constantPoolHandle cp (THREAD, constant_pool);
 
   // parsing constant pool entries
+  // 解析常量池项并将这些项保存到ConstantPool实例中
   parse_constant_pool_entries(length, CHECK_(nullHandle));
 
   int index = 1;  // declared outside of loops for portability
@@ -408,10 +412,15 @@ constantPoolHandle ClassFileParser::parse_constant_pool(TRAPS) {
         break;
       case JVM_CONSTANT_ClassIndex :
         {
+          // 获取ConstantPool数据区index槽位上存储的值
           int class_index = cp->klass_index_at(index);
+          // 由于是对常量池项CONSTANT_Utf8_info的引用，所以调用valid_symbol_at()函数验证class_index的值必须是一个合法的常量池索引。
           check_property(valid_symbol_at(class_index),
                  "Invalid constant pool index %u in class file %s",
                  class_index, CHECK_(nullHandle));
+          // 调用symbol_at()函数取出ConstantPool数据区class_index槽位上的值，其实是一个指向Symbol实例的指针，
+          // 因为CONSTANT_Utf8_info表示一个字符串，而HotSpot VM通过Symbol实例表示字符串，所以会在对应槽位上存储指向Symbol实例的指针。
+          // 取出Symbol指针后，调用unresolved_klass_at_put()函数更新槽位上的值为指向Symbol实例的指针，
           cp->unresolved_klass_at_put(index, cp->symbol_at(class_index));
         }
         break;
@@ -3856,6 +3865,7 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
   _relax_verify = Verifier::relax_verify_for(class_loader());
 
   // Constant pool
+  // 解析常量池
   constantPoolHandle cp = parse_constant_pool(CHECK_(nullHandle));
 
   int cp_size = cp->length();
